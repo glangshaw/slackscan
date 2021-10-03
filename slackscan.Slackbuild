@@ -1,0 +1,53 @@
+#!/bin/bash -p
+#
+#  Slackbuild to package slackscan scripts.
+
+NAME=slackscan
+VERSION=2.4
+ARCH=noarch
+BUILD=1
+
+SLACKBUILD="$( realpath "$0" )"
+CWD="$( dirname "$SLACKBUILD" )"
+
+workdir="$( mktemp -d /tmp/${NAME}_slackbuild.XXXXXX )" || exit 1
+PKG="$workdir/pkg"
+
+mkdir "$PKG" && chmod 755 "$PKG" && cd "$PKG" || exit 1
+for dir in \
+  install usr/sbin etc/slackscan
+do
+  install -o root -g root -m 755 -d "$dir"
+done
+
+cd "$CWD"
+
+install -t "$PKG/usr/sbin/" -o root -g root -m 755 sbin/*
+install -t "$PKG/usr/doc/slackup-$VERSION" -o root -g root -m 644 README*
+
+install -T -o root -g root -m 644 etc/default.conf "$PKG/etc/slackscan/default.conf.new"
+
+install -t "$PKG/install/" -o root -g root -m 755 doinst.sh
+cat <<-_EOF > "$PKG/install/slack-desc"
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.  Line
+# up the first '|' above the ':' following the base package name, and the '|'
+# on the right side marks the last column you can put a character in.  You must
+# make exactly 11 lines for the formatting to be correct.  It's also
+# customary to leave one space after the ':'.
+
+         |-----handy-ruler--------------------------------------------------------|
+slackscan: slackscan (slackscan - package update aid)
+slackscan:
+slackscan: 'slackscan' is a script to aid the administrator in keeping a
+slackscan: Slackware system updated.  It compares the installed system to
+slackscan: the packages available in its configured locations and generates lists
+slackscan: of packages that should be installed, updated or removed in order to
+slackscan: bring the host system in-step with the available packages.
+slackscan:
+slackscan: Multiple local and/or remote package sources (repos) are supported,
+slackscan:
+slackscan: homepage: https://github.com/glangshaw/slackscan
+_EOF
+
+cd "$PKG" && makepkg -l y -c n "/tmp/$NAME-$VERSION-$ARCH-$BUILD.tgz"

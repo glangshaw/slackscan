@@ -1,0 +1,319 @@
+#!/bin/bash -p
+#
+#  slackscan
+   version='2.3'
+
+#  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
+#  Permission to use, copy, modify, and/or distribute this software for any
+#  purpose with or without fee is hereby granted, provided that the above
+#  copyright notice and this permission notice appear in all copies.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+#  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+#  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+#  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+#  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+#  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+#  Description:
+#
+#    'slackscan' will scan a specified list of locations, either
+#    local, or remote, for available Slackware package files and
+#    compare the available packages to those currently installed.
+#
+#    The output of 'slackscan' may subsequently be used with other
+#    tools (such as the Slackware 'pkgtools' utilities) in order to
+#    syncronise the packages of the installed system with those
+#    available. 'slackscan' does not make any changes to the system
+#    itself.
+#
+#    Available packages are determined by searching for slackware
+#    package files (.t?z) in the locations specified contents of a
+#    config file.  The default config file location is:
+#    /etc/slackscan/default.conf.
+#    The user may specify an alternative config file by using the
+#    '-f' command-line option.
+#
+#    All specified locations must exist. A location may be one of:
+#
+#      o  A local directory containing slackware package files:
+#         which will be search recursively. The directory does not need
+#         to contain a CHECKSUMS.md5 file, or any other metadata.
+#         Existence of correctly named *.t?z package files is all that is
+#         required.
+#      o  A locally stored CHECKSUMS.md5 file:
+#         the relative paths of package files in the CHECKSUMS.md5 will
+#         be prefixed with the PATH to the CHECKSUMS.md5 file.
+#      o  A URL of a remote CHECKSUMS.md5 file:
+#         As above, but the CHECKSUMS.md5 will be fetched and all the
+#         package paths output will be prefixed with the URL path
+#         of the CHECKSUMS.md5 file.
+#
+#    In the event that multiple packages files are found that share
+#    the same base package name the first package file to be found is
+#    used for the comparison.
+#
+
+#  NOTES:
+#
+#    o  BLACKLISTING/FILTERING
+#       Blacklisting or selectively filtering of packages is considered
+#       out of scope for this utility and should be done by whatever
+#       tool acts on the generated lists.
+#
+
+set -e -o pipefail
+
+unset IFS
+PATH='/usr/bin'
+LC_ALL=C
+
+########################################################################
+# check availability of external utilities:
+
+type mktemp find grep sed cut sort join curl gpg >/dev/null || exit 1
+
+########################################################################
+# Defaults:
+
+DEFAULT_CONFIG_FILE="/etc/slackscan/default.conf"
+
+########################################################################
+# parse arguments
+
+unset o_install o_remove o_upgrade o_config o_usage o_skip_verify
+
+if [ $# -eq 0 ]; then
+   o_usage=1
+fi
+
+while getopts ':f:i:u:r:hN' opt
+do
+        case "$opt" in
+                f)  o_config=$OPTARG   ;;
+                h)  o_usage=1          ;;
+                i)  o_install=$OPTARG  ;;
+                r)  o_remove=$OPTARG   ;;
+                u)  o_upgrade=$OPTARG  ;;
+                N)  o_skip_verify=1    ;;
+                \?) echo "Unexpected option: -$OPTARG"
+                    exit 1 ;;
+                :)  echo "Missing operand for option -$OPTARG"
+                    exit 1 ;;
+        esac
+done
+shift $(( OPTIND - 1 ))
+
+########################################################################
+# read config file to Determine package sources:
+
+case "$o_config" in
+  - ) conf=/dev/stdin ;;
+  '') conf=$DEFAULT_CONFIG_FILE ;;
+  *)  conf=$o_config ;;
+esac
+
+mapfile -t pkg_sources < <( grep -v -E '^ *(#|$)' "$conf" ) || exit 1
+
+unset conf
+
+########################################################################
+# Determine Package data directory:
+
+if [ -d "$ROOT/var/lib/pkgtools/packages" ]; then
+  pkgdatadir="/var/lib/pkgtools/packages"
+else
+  pkgdatadir="/var/log/packages"
+fi
+
+test -d "${ROOT}$pkgdatadir" \
+  && test -r "${ROOT}$pkgdatadir" \
+  && test -x "${ROOT}$pkgdatadir" \
+  || { echo "error: Can't access ${ROOT}$pkgdatadir" >&2 ; exit 1 ; }
+
+########################################################################
+
+if [ -z "$o_usage" ] && [ -z "$o_install" ] && [ -z "$o_upgrade" ] && [ -z "$o_remove" ]; then
+   printf "slackscan: one of -i, -o, -r is required.\n\n" 1>&2
+   o_usage=1
+fi
+
+if [ "$o_usage" ]; then
+  printf '%s\n' \
+    'Usage:' \
+    '         slackscan [ -N ] [ -f filename ] [-i filename ] [ -u filename ] [ -r filename ] ' \
+    '' \
+    '           where, ' \
+    '             -f :   specifies the filename of the config file' \
+    '             -i :   specifies file to hold list of packages to be installed. ' \
+    '             -u :   specifies file to hold list of packages to be upgraded. ' \
+    '             -r :   specifies file to hold list of packages to be removed. ' \
+    "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files (INSECURE). " \
+    ''
+   printf 'Configured package locations:\n'
+   printf '  %s\n' "${pkg_sources[@]}"
+   exit 0
+fi
+
+########################################################################
+# output files:
+
+[ "$o_install" = "-" ] && o_install=/dev/fd/1
+[ "$o_upgrade" = "-" ] && o_upgrade=/dev/fd/1
+[ "$o_remove" = "-" ]  && o_remove=/dev/fd/1
+
+[ ! -z "$o_install" ] && { exec {report_i}<> "$o_install" || exit 1 ; }
+[ ! -z "$o_upgrade" ] && { exec {report_u}<> "$o_upgrade" || exit 1 ; }
+[ ! -z "$o_remove" ]  && { exec {report_r}<> "$o_remove"  || exit 1 ; }
+
+########################################################################
+# temporary workdir/files:
+
+workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
+  && cd "$workdir" || exit 1
+
+exec {available}<> "$workdir/available" || exit 1
+exec {installed}<> "$workdir/installed" || exit 1
+exec {table}<>     "$workdir/table"     || exit 1
+exec {checksums}<> "$workdir/checksums" || exit 1
+exec {signature}<> "$workdir/signature" || exit 1
+
+########################################################################
+
+function reformat_installed()
+{
+   # format:  short-name long-name
+   sed -e 's|^\(.*/\)\([^/]\+\)-\([^-/]\+\)-\([^-/]\+\)-\([0-9]\+\)\([^-]*\)$|\2 \2-\3-\4-\5\6| ; t ; d'
+}
+
+function reformat_available()
+{
+   # format:  short-name long-name filename
+   sed -e 's|^\(.*/\)\([^/]\+\)-\([^-/]\+\)-\([^-/]\+\)-\([0-9]\+\)\([^-./]*\)\(\.t[^-/]z\)$|\2 \2-\3-\4-\5\6 \1\2-\3-\4-\5\6\7| ; t ; d '
+}
+
+function find_in_dir()
+{
+  if [ ! -d "$1" ]; then
+    echo "slackscan: directory not found, $1" >&2
+    exit 1
+  fi
+
+  find -L "$1" -type f -name "*.t?z" \
+    | reformat_available \
+    | sort -k 1,1
+}
+
+function reformat_md5()
+{
+  # extracts filepaths matching .t?z, prefixing with path to CHECKSUMS.md5
+  local prefix="${1%/}"
+  sed -e "s|\([[:alnum:]]\{32\}  \)\(\./\)\?\(.\+-[^-/]\+-[^-/]\+-[0-9]\+[^-/]*\.t[^-/]z\$\)|${prefix}/\3| ;t ;d"
+}
+
+function fetch_md5()
+{
+  if curl -s -f -o /dev/fd/$checksums "$1" ; then
+    if [ ${o_skip_verify:-0} -ne 1 ]; then
+      curl -s -f -o /dev/fd/$signature "$1.asc" \
+        && gpg --verify /dev/fd/$signature /dev/fd/$checksums >/dev/null 2>&1 \
+        || { printf "gpg --verify failed on %s\n" "$1" >&2 ; exit 16 ; }
+    fi
+  fi
+}
+
+function find_in_md5()
+{
+  local prefix=${1%/*}
+  local filename
+
+  case "$1" in
+    http://*|https://*)  fetch_md5 "$1"
+                        filename=/dev/fd/$checksums
+                        ;;
+
+    file://*|/* )  filename=${1#file://} ;;
+    *)  echo "unsupported: $1" ; exit 1 ;;
+  esac
+
+  if [ ! -r "$filename" ]; then
+    echo "slackscan: file not found, $filename" >&2
+    exit 1
+  fi
+
+  reformat_md5 "$prefix" < "$filename" \
+    | reformat_available \
+    | sort -k 1,1
+}
+
+function find_available()
+{
+  local pkg_source
+
+  for pkg_source in ${pkg_sources[@]}
+  do
+    case "$pkg_source" in
+      *.md5|*.MD5) find_in_md5 "$pkg_source" ;;
+                *) find_in_dir "$pkg_source" ;;
+    esac
+  done
+  unset IFS
+}
+
+function list_available()
+{
+  find_available \
+    | sort -u -k 1,1
+}
+
+function list_installed()
+{
+  find -H "${ROOT}$pkgdatadir" -type f \
+    | reformat_installed \
+    | sort -k 1,1
+}
+
+########################################################################
+# Generate lookup table:
+
+  list_available >&$available
+  list_installed >&$installed
+
+  sort -u -k 1,1 <( cut -f1 -d ' ' /dev/fd/$installed ) \
+                 <( cut -f1 -d ' ' /dev/fd/$available ) \
+    | join -a 1 -e 'not-installed' -o 1.1,2.2 - /dev/fd/$installed \
+    | join -a 1 -e 'not-available' -o 1.1,1.2,2.2,2.3 - /dev/fd/$available \
+    >&$table
+
+########################################################################
+# Report:
+
+while read package installed available pkgpath
+do
+   if [ "$o_upgrade" \
+        -a "$installed" != 'not-installed' \
+        -a "$available" != 'not-available' \
+        -a "$available" != "$installed" ]; then
+      echo "$pkgpath" >&$report_u
+   fi
+   if [ "$o_install" \
+        -a "$installed" == 'not-installed' ]; then
+     echo "$pkgpath" >&$report_i
+   fi
+   if [ "$o_remove" \
+        -a "$installed" != 'not-installed' \
+        -a "$available" == 'not-available' ]; then
+      echo "$installed" >&$report_r
+   fi
+done < /dev/fd/$table
+
+########################################################################
+# clean-up
+
+cd /tmp
+rm -r "$workdir"
+
+exit $rc
+
+################################################################# End. #
