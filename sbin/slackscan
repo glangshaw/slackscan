@@ -80,6 +80,15 @@ type mktemp find grep sed cut sort join uniq curl gpg >/dev/null || exit 1
 DEFAULT_CONFIG_FILE="/etc/slackscan/default.conf"
 
 ########################################################################
+# functions:
+
+die()
+{
+  2>&1 printf "%s: %s\n" "${0##*/}" "${2:-aborted.}"
+  exit ${1:-1}
+}
+
+########################################################################
 # parse arguments
 
 unset o_install o_remove o_upgrade o_config o_usage o_skip_verify
@@ -90,18 +99,16 @@ fi
 
 while getopts ':f:i:u:r:hN' opt
 do
-        case "$opt" in
-                f)  o_config=$OPTARG   ;;
-                h)  o_usage=1          ;;
-                i)  o_install=$OPTARG  ;;
-                r)  o_remove=$OPTARG   ;;
-                u)  o_upgrade=$OPTARG  ;;
-                N)  o_skip_verify=1    ;;
-                \?) echo "Unexpected option: -$OPTARG"
-                    exit 1 ;;
-                :)  echo "Missing operand for option -$OPTARG"
-                    exit 1 ;;
-        esac
+  case "$opt" in
+    f)  o_config=$OPTARG   ;;
+    h)  o_usage=1          ;;
+    i)  o_install=$OPTARG  ;;
+    r)  o_remove=$OPTARG   ;;
+    u)  o_upgrade=$OPTARG  ;;
+    N)  o_skip_verify=1    ;;
+    \?) die 1 "Unexpected option: -$OPTARG" ;;
+    :)  die 1 "Missing operand for option -$OPTARG" ;;
+  esac
 done
 shift $(( OPTIND - 1 ))
 
@@ -196,8 +203,7 @@ function reformat_available()
 function find_in_dir()
 {
   if [ ! -d "$1" ]; then
-    echo "slackscan: directory not found, $1" >&2
-    exit 1
+    die 1 "slackscan: directory not found, $1"
   fi
 
   find -L "$1" -type f -name "*.t?z" \
@@ -238,8 +244,7 @@ function find_in_md5()
   esac
 
   if [ ! -r "$filename" ]; then
-    echo "slackscan: file not found, $filename" >&2
-    exit 1
+    die 1 "slackscan: file not found, $filename"
   fi
 
   reformat_md5 "$prefix" < "$filename" \
@@ -283,13 +288,9 @@ function list_installed()
   #  Duplicates can lead to incorrect output, so abort.
   dups=$( wc -l < <( uniq -d <( cut -f1 -d ' ' /dev/fd/$installed) ) )
   if [ ${dups:-0} -gt 0 ]; then
-    >&2 printf "%s\n"  \
-      "slackscan: Aborted." \
-      "           Detected multiple packages installed with the same base package name." \
-      "           This will make output unpredicatable, and is not supported."
-    exit 1
+    die 1 "Aborted - multiple packages installed with the same base package name."
   fi
-  
+
   sort -u -k 1,1 <( cut -f1 -d ' ' /dev/fd/$installed ) \
                  <( cut -f1 -d ' ' /dev/fd/$available ) \
     | join -a 1 -e 'not-installed' -o 1.1,2.2 - /dev/fd/$installed \
