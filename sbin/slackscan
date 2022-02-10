@@ -197,7 +197,7 @@ function reformat_installed()
 function reformat_available()
 {
    # format:  short-name long-name filename
-   sed -e 's|^\(.*/\)\([^/]\+\)-\([^-/]\+\)-\([^-/]\+\)-\([0-9]\+\)\([^-./]*\)\(\.t[^-/]z\)$|\2 \2-\3-\4-\5\6 \1\2-\3-\4-\5\6\7| ; t ; d '
+   sed -e 's|^\(.*/\)\([^/]\+\)-\([^-/]\+\)-\([^-/]\+\)-\([0-9]\+\)\([^-/]*\)\(\.t[^-/]z\)$|\2 \2-\3-\4-\5\6 \1\2-\3-\4-\5\6\7| ; t ; d '
 }
 
 function find_in_dir()
