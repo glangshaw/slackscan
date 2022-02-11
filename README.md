@@ -54,7 +54,7 @@ The default configuration file for 'slackscan' is /etc/slackscan/default.conf
 Usage is pretty simple, just specify where you want the output to go
 ```
 Usage:
-         slackscan [ -N ] [ -f filename ] [-i filename ] [ -u filename ] [ -r filename ] 
+         slackscan [ -N ] [[ -f filename ] | [ -p profile ]] [-i filename ] [ -u filename ] [ -r filename ] 
 
            where, 
              -f :   specifies the filename of the config file

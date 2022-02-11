@@ -156,7 +156,7 @@ fi
 if [ "$o_usage" ]; then
   printf '%s\n' \
     'Usage:' \
-    '         slackscan [ -N ] [ -f filename ] [-i filename ] [ -u filename ] [ -r filename ] ' \
+    '         slackscan [ -N ] [[ -f filename ] | [ -p profile ]]  [-i filename ] [ -u filename ] [ -r filename ] ' \
     '' \
     '           where, ' \
     '             -f :   specifies the filename of the config file' \
