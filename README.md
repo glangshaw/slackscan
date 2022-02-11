@@ -47,7 +47,11 @@ package files may be found.
 A location may be either a local directory, or a http/https URL
 pointing to a remote CHECKSUMS.md5 file.
 
-The default configuration file for 'slackscan' is /etc/slackscan/default.conf
+Slackscan will search for its config file in the following locations:
+  1) As specified by the -p or -f options.
+  2) As specifed in the $SLACKUP_PROFILE environment variable
+  3) Slackscan's default: /etc/slackscan/default.conf
+  4) Slackup's default: /etc/slackup/default/scan
 
 ### usage
 

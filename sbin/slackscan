@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='2.8'
+   version='2.0'
 
 #  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -79,10 +79,11 @@ type mktemp find grep sed cut sort join uniq curl gpg >/dev/null || exit 1
 ########################################################################
 # Defaults:
 
-if [ -n "$SLACKUP_PROFILE" ]; then
-  DEFAULT_CONFIG_FILE="/etc/slackup/${SLACKUP_PROFILE}/scan"
-else
-  DEFAULT_CONFIG_FILE="/etc/slackscan/default.conf"
+DEFAULT_CONFIG_FILE="/etc/slackscan/default.conf"
+if [ -n "$SLACKUP_PROFILE" ] \
+  || [ ! -e "$DEFAULT_CONFIG_FILE" ] \
+  && [ -e /etc/slackup/default/scan ]; then
+  DEFAULT_CONFIG_FILE="/etc/slackup/${SLACKUP_PROFILE:-default}/scan"
 fi
 
 ########################################################################
@@ -130,8 +131,6 @@ esac
 
 mapfile -t pkg_sources < <( grep -v -E '^ *(#|$)' "$conf" ) || exit 1
 
-unset conf
-
 ########################################################################
 # Determine Package data directory:
 
@@ -166,10 +165,12 @@ if [ "$o_usage" ]; then
     '             -r :   specifies file to hold list of packages to be removed. ' \
     "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files (INSECURE). " \
     ''
-   printf 'Configured package locations:\n'
+   printf 'Configured package locations in %s:\n' "$conf"
    printf '  %s\n' "${pkg_sources[@]}"
    exit 0
 fi
+
+unset conf
 
 ########################################################################
 # output files:
