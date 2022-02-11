@@ -155,15 +155,18 @@ fi
 if [ "$o_usage" ]; then
   printf '%s\n' \
     'Usage:' \
-    '         slackscan [ -N ] [[ -f filename ] | [ -p profile ]]  [-i filename ] [ -u filename ] [ -r filename ] ' \
+    '         slackscan [ -N ] [ [ -f filename ] | [ -p profile ] ] ' \
+    '                   [-i filename ] [ -u filename ] [ -r filename ] ' \
     '' \
     '           where, ' \
     '             -f :   specifies the filename of the config file' \
-    '             -p :   specifies 'slackup' profile name as alternative way to select a config file' \
+    '             -p :   specifies 'slackup' profile name as alternative way to' \
+    '                    select a config file' \
     '             -i :   specifies file to hold list of packages to be installed. ' \
     '             -u :   specifies file to hold list of packages to be upgraded. ' \
     '             -r :   specifies file to hold list of packages to be removed. ' \
-    "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files (INSECURE). " \
+    "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files. " \
+    "                    (INSECURE). " \
     ''
    printf 'Configured package locations in %s:\n' "$conf"
    printf '  %s\n' "${pkg_sources[@]}"
