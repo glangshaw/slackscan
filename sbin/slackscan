@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='2.7'
+   version='2.8'
 
 #  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -160,7 +160,7 @@ if [ "$o_usage" ]; then
     '' \
     '           where, ' \
     '             -f :   specifies the filename of the config file' \
-    '             -p :   specifies 'slackup' profile name as alternative way select a config file' \
+    '             -p :   specifies 'slackup' profile name as alternative way to select a config file' \
     '             -i :   specifies file to hold list of packages to be installed. ' \
     '             -u :   specifies file to hold list of packages to be upgraded. ' \
     '             -r :   specifies file to hold list of packages to be removed. ' \

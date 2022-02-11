@@ -53,14 +53,16 @@ The default configuration file for 'slackscan' is /etc/slackscan/default.conf
 
 Usage is pretty simple, just specify where you want the output to go
 ```
-  slackscan [ -N ] [ -f filename ] [-i filename ] [ -u filename ] [ -r filename ]
+Usage:
+         slackscan [ -N ] [ -f filename ] [-i filename ] [ -u filename ] [ -r filename ] 
 
-    where,
-      -f :   specifies the filename of the config file
-      -i :   specifies file to hold list of packages to be installed.
-      -u :   specifies file to hold list of packages to be upgraded.
-      -r :   specifies file to hold list of packages to be removed.
-      -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files (INSECURE).
+           where, 
+             -f :   specifies the filename of the config file
+             -p :   specifies slackup profile name as alternative way to select a config file
+             -i :   specifies file to hold list of packages to be installed. 
+             -u :   specifies file to hold list of packages to be upgraded. 
+             -r :   specifies file to hold list of packages to be removed. 
+             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files (INSECURE). 
 ```
 
 An example update run might look something along the lines of the
@@ -104,3 +106,6 @@ forgotten" abuses, it'll have to do for now.
 
 I hope other slackware users may find them useful, but if not, that's
 ok.  I wrote them for my own use.
+
+Also, you may want to checkout my 'slackup' script, which is a front
+end to slackscan that adds additional functionality.
