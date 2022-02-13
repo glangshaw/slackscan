@@ -15,7 +15,7 @@ PKG="$workdir/pkg"
 
 mkdir "$PKG" && chmod 755 "$PKG" && cd "$PKG" || exit 1
 for dir in \
-  install usr/sbin etc/slackscan
+  install usr/sbin etc/slackscan usr/man/man8
 do
   install -o root -g root -m 755 -d "$dir"
 done
@@ -24,6 +24,7 @@ cd "$CWD"
 
 install -t "$PKG/usr/sbin/" -o root -g root -m 755 sbin/*
 install -t "$PKG/usr/doc/slackup-$VERSION" -o root -g root -m 644 README*
+gzip -c man/slackscan.8 > "$PKG/usr/man/man8/slackscan.8.gz"
 
 install -T -o root -g root -m 644 etc/default.conf "$PKG/etc/slackscan/default.conf.new"
 

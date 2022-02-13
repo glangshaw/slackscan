@@ -1,0 +1,80 @@
+.TH SLACKSCAN 8 2022-02-13
+.SH NAME
+slackscan \- Slackware Package Repository difference scanner
+.SH SYNOPSIS
+.B slackscan
+[ \fB-N\fR ] [ [ \fB-f \fICONFIG\fR ] | [ \fB\-p \fIPROFILE\fR ]
+[ \fB\-i \fIFILENAME\fR ] [ \fB\-u \fIFILENAME\fR ] [ \fB\-r \fIFILENAME\fR ]
+.SH DESCRIPTION
+.B slackscan
+will compare the packages currently installed on a Slackware system to
+the combined list of all available package files found across its
+configured source locations. It will then write a list of packages or
+package files to the \fIFILENAME\fR(s) specified.
+.PP
+.TP
+.I CONFIG
+slackscan configuration file to be used.
+.TP
+.I PROFILE
+slackup configuration profile to be used.
+.TP
+.I FILENAME
+output filename. '\fB\-\fR' can be used to specify \fBstdout\fR.
+.SH OPTIONS
+.TP
+.BI \-f " CONFIG"
+specify the configuration file to use for this scan.
+.TP
+.BI \-p " PROFILE"
+use the config file contained in the specified \fBslackup\fR(8) \fIPROFILE\fR.
+.TP
+.BI \-i " FILENAME"
+specify output \fIFILENAME\fR to hold the list of package files that need to be installed.
+.TP
+.BI \-u " FILENAME"
+specify output \fIFILENAME\fR to hold the list of package files that need to be installed.
+.TP
+.BI \-r " FILENAME"
+specify output \fIFILENAME\fR to hold the list of packages that need to be removed.
+.TP
+.B \-N
+do not gpg --verify any \fBCHECKSUMS.md5\fR files specified as package
+source locations.
+.TP
+.B \-h
+show usage text.
+.SH FILES
+The configuration file contains a list of package locations, one per
+line, which are to be scanned for packages. A package location may be
+one of:
+.RS
+.PP
+The absolute path of a directory on the filesystem.
+.PP
+The absolute path of a \fBCHECKSUMS.md5\fR in a directory on the filesystem.
+.PP
+The URL of a \fBCHECKSUMS.md5\fR file on a remote http(s) web-server.
+.RE
+.PP
+The search order for the config file is as follows:
+.RS
+.PP
+As specified by the \fB\-p\fR or \fB\-f\fR options.
+.PP
+As specifed in the \fBSLACKUP_PROFILE\fR environment variable
+.PP
+Slackscan's default: \fB/etc/slackscan/default.conf\fR
+.PP
+Slackup's default: \fB/etc/slackup/default/scan\fR
+.RE
+.PP
+.SH EXAMPLES
+There's really not much to say here:
+.RS
+.nf
+slackscan -i install.list -u update.list -r remove.list
+.fi
+.RE
+.SH SEE ALSO
+.BR slackup (8)
