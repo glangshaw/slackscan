@@ -3,7 +3,7 @@
 #  Slackbuild to package slackscan scripts.
 
 NAME=slackscan
-VERSION=2.11
+VERSION=2.11.1
 ARCH=noarch
 BUILD=1
 
@@ -24,7 +24,10 @@ cd "$CWD"
 
 install -t "$PKG/usr/sbin/" -o root -g root -m 755 sbin/*
 install -t "$PKG/usr/doc/slackup-$VERSION" -o root -g root -m 644 README*
-gzip -c man/slackscan.8 > "$PKG/usr/man/man8/slackscan.8.gz"
+gzip -c man/slackscan.8 \
+  > "$PKG/usr/man/man8/slackscan.8.gz"
+gzip -c man/slackscan_update_generator.8 \
+  > "$PKG/usr/man/man8/slackscan_update_generator.8.gz"
 
 install -T -o root -g root -m 644 etc/default.conf "$PKG/etc/slackscan/default.conf.new"
 

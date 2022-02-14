@@ -1,0 +1,19 @@
+.TH SLACKSCAN_UPDATE_GENERATOR 8 2022-02-14
+.SH NAME
+slackscan_update_generator \- formats slackscan output into shell commands
+.SH SYNOPSIS
+.B slackscan_update_generator
+.SH DESCRIPTION
+.B slackscan_update_generator
+will read, on stdin, the output of a slackscan -i or -u run and will write
+to stdout a sequence of shell commands to run the curl and pkgtools'
+upgradepkg commands.
+.PP
+.SH EXAMPLES
+.nf
+slackscan -i - -u - \\
+  | slackscan_update_generator > update_script.sh
+bash update_script.sh
+.fi
+.SH SEE ALSO
+.BR slackscan (8)
