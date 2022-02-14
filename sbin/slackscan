@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='2.0'
+   version='2.10'
 
 #  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -232,14 +232,14 @@ function reformat_md5()
 
 function fetch_md5()
 {
-  if curl -s -f -o /dev/fd/$checksums "$1" ; then
+  if curl --retry 3 -s -f -o /dev/fd/$checksums "$1" ; then
     if [ ${o_skip_verify:-0} -ne 1 ]; then
-      curl -s -f -o /dev/fd/$signature "$1.asc" \
+      curl --retry 3 -s -f -o /dev/fd/$signature "$1.asc" \
         && gpg --verify /dev/fd/$signature /dev/fd/$checksums >/dev/null 2>&1 \
-        || { printf "gpg --verify failed on %s\n" "$1" >&2 ; exit 16 ; }
+        || { die 16 "gpg --verify failed on $1" ; }
     fi
   else
-    exit 16
+    die 16 "Aborted - could not fetch $1"
   fi
 }
 

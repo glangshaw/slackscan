@@ -3,10 +3,10 @@
 #  slackscan_update_generator.awk,
 #  Version 2.4
 #
-#  This awk-script takes a list of Slackware packages on stdin
-#  and converts them to a stream of pkgtools updatepkg commands.
-#  It is intended for use with the output generated with
-#  slackscan's -i and -u options.
+#  This awk-script takes a list of Slackware packages on stdin and
+#  converts them to a stream of pkgtools updatepkg commands.  It is
+#  intended for use with the output generated with slackscan's -i and
+#  -u options.
 #
 
 BEGIN {
@@ -18,8 +18,8 @@ BEGIN {
 }
 
 /^https?:\/\/.*\/[^/]+-[^-/]+-[^-/]+-[0-9]+[^-/.]*\.t[^-/.]z$/ {
-    print "curl -O '"$0"'"
-    print "curl -O '"$0".asc'"
+    print "curl --retry 3 -O '"$0"'"
+    print "curl --retry 3 -O '"$0".asc'"
     url = 1
 }
 
