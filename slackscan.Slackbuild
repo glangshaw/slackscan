@@ -3,7 +3,7 @@
 #  Slackbuild to package slackscan scripts.
 
 NAME=slackscan
-VERSION=2.10
+VERSION=2.11
 ARCH=noarch
 BUILD=1
 
