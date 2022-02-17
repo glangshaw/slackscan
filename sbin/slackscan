@@ -277,7 +277,6 @@ function find_available()
                 *) find_in_dir "$pkg_source" ;;
     esac
   done
-  unset IFS
 }
 
 function list_available()
