@@ -1,4 +1,4 @@
-# /etc/slackscan/default.conf
+# /etc/slackscan/15.0/scan
 #
 #  List of locations where 'slackscan' can recursively find
 #  slackware packages.
@@ -11,12 +11,9 @@
 # find a nearby mirror. If you have a preferred mirror then
 # adjust accordingly.
 
-# Uncomment to follow slackware64-current:
-# https://mirrors.slackware.com/slackware/slackware64-current/slackware64/CHECKSUMS.md5
-
-# Uncomment to follow slackware64-15.0 and patches:
-# https://mirrors.slackware.com/slackware/slackware64-15.0/patches/CHECKSUMS.md5
-# https://mirrors.slackware.com/slackware/slackware64-15.0/CHECKSUMS.md5
+# slackware64-15.0 and patches:
+https://mirrors.slackware.com/slackware/slackware64-15.0/patches/CHECKSUMS.md5
+https://mirrors.slackware.com/slackware/slackware64-15.0/slackware64/CHECKSUMS.md5
 
 # Uncomment to include a local directory of packages as an additional
 # package source::

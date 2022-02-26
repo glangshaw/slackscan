@@ -1,0 +1,282 @@
+#!/bin/bash -p
+#
+#  slackup
+   version=5.3
+#
+#  Script to generate the sequence of package-management commands
+#  needed to syncronize the state of the installed system with the
+#  contents of a local package repository.
+#
+#  Copyright (c) 2021, Gary Langshaw. <gary.langshaw@gmail.com>
+#  Permission to use, copy, modify, and/or distribute this software for any
+#  purpose with or without fee is hereby granted, provided that the above
+#  copyright notice and this permission notice appear in all copies.
+#
+#  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+#  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+#  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+#  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+#  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+#  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+#  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+set -o pipefail
+
+PATH=/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/bin:/usr/local/sbin:
+LC_ALL=C
+unset IFS
+umask 022
+
+########################################################################
+# Defaults:
+
+SLACKUP_DIR='/etc/slackup'
+POST_INSTALL_DIR="$SLACKUP_DIR/post-install"
+
+: ${SLACKUP_CACHE_DIR:=/var/cache/packages}
+
+########################################################################
+# functions:
+
+die()
+{
+  2>&1 printf "%s: %s\n" "${0##*/}" "${2:-aborted.}"
+  exit ${1:-1}
+}
+
+remove_comments()
+{
+  grep -v -E '^ *(#|$)' "${1:--}"
+}
+
+########################################################################
+# check availability of external utilities:
+
+if ! type mktemp xargs gpg grep sed >/dev/null ; then
+  die 1 "external dependencies missing."
+fi
+
+########################################################################
+# Parse options:
+
+unset o_usage o_verify_pkg_sig
+unset o_regex_type o_comment
+unset o_profile
+unset o_post_install
+unset o_list_only
+unset o_execute
+unset o_ignore_blacklist
+unset o_ignore_filter
+unset O_ignore_protect
+o_verify_checksums=1
+o_do_install=1
+o_do_upgrade=1
+o_do_remove=1
+
+while getopts ':chilsxNPBFEIURb:p:' opt
+do
+  case "$opt" in
+    I)  o_do_install=0            ;;
+    U)  o_do_upgrade=0            ;;
+    R)  o_do_remove=0             ;;
+    E)  o_regex_type='-E'         ;;
+    B)  o_ignore_blacklist='-B'   ;;
+    F)  o_ignore_filter='-F'      ;;
+    P)  o_ignore_protect='-P'     ;;
+    N)  o_verify_checksums=0      ;;
+    c)  o_comment=1               ;;
+    h)  o_usage=1                 ;;
+    i)  o_post_install=1          ;;
+    l)  o_list_only=1             ;;
+    x)  o_execute=1               ;;
+    p)  o_profile=$OPTARG         ;;
+    s)  o_verify_pkg_sig=1        ;;
+    \?)  die 1  "Unexpected option: -$OPTARG"         ;;
+     :)  die 1  "Missing operand for option -$OPTARG" ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+########################################################################
+# Usage:
+
+show_usage()
+{
+  printf '%s\n' \
+    "slackup:  write a sequence of package update commands to stdout" \
+    '' \
+    'Usage:' \
+    '    slackup [ OPTIONS ] [ -l | -x ] [ -p PROFILE ] [ PATTERN ... ]' \
+    '    slackup -h' \
+    '' \
+    "      PROFILE:    configuration profile. DEFAULT=$DEFAULT_PROFILE" \
+    '      PATTERN:    regex pattern: limit output to matching files or packages.' \
+    '' \
+    '      OPTIONS:' \
+    '        -l    list package/pkgfile names only.' \
+    '        -x    execute generated commands instead of writing them to stdout. ' \
+    '        -c    add comment lines to output to be more readable.' \
+    '        -i    include invocation of post-install scripts. ' \
+    '        -s    include gpg --verify of package files. ' \
+    '        -h    show usage text.' \
+    '        -E    interpret PATTERN as extended-regex.' \
+    '        -N    do not gpg --verify CHECKSUMS.md5 files.' \
+    '        -I    ignore new packages.' \
+    '        -U    ignore updated packages.' \
+    '        -R    ignore removed packages.' \
+    '        -B    ignore the blacklist file.' \
+    '        -F    ignore the filter file.' \
+    '        -P    ignore the protect file.' \
+    ''
+  exit ${1:-0}
+}
+
+if [ "$o_usage" ]; then
+  show_usage
+fi
+
+if [ ${o_execute:-0} -eq 1 ] && [ ${o_list_only:-0} -eq 1 ]; then
+  die 1 "-l and -x are mutually exclusive."
+fi
+
+########################################################################
+# temporary workdir/files:
+
+workdir="$( mktemp -d /tmp/slackup.XXXXXX )" \
+  && cd "$workdir" || exit 1
+
+exec {install}<>     "$workdir/install.list"         ||  exit 1
+exec {upgrade}<>     "$workdir/upgrade.list"         ||  exit 1
+exec {remove}<>      "$workdir/remove.list"          ||  exit 1
+exec {filter_cli}<>  "$workdir/filter_cli"           ||  exit 1
+exec {fl_install}<>  "$workdir/fl_install.list"      ||  exit 1
+exec {fl_upgrade}<>  "$workdir/fl_upgrade.list"      ||  exit 1
+exec {fl_remove}<>   "$workdir/fl_remove.list"       ||  exit 1
+
+########################################################################
+# Generate lists:
+
+[ ${o_verify_checksums:-1} -eq 0 ]  &&  slackscan_opt='-N'
+
+/usr/sbin/slackscan \
+  ${slackscan_opt} \
+  ${o_ignore_filter} ${o_ignore_blacklist} ${o_ignore_protect} \
+  ${o_profile:+-p $o_profile} \
+  -i /dev/fd/$install \
+  -u /dev/fd/$upgrade \
+  -r /dev/fd/$remove \
+  || die  1 "slackscan exited rc=$?."
+
+########################################################################
+# Apply filters the command-line:
+
+if [ $# -gt 0 ]; then
+  while [ $# -gt 0 ]
+  do
+    if [ "$1" = '-' ]; then
+      remove_comments /dev/stdin >&$filter_cli
+    else
+      printf "%s\n" "$1" >&$filter_cli
+    fi
+    shift
+  done
+fi
+
+filter_cli_count=$( wc -l </dev/fd/$filter_cli )
+if [ ${filter_cli_count:-0} -gt 0 ]; then
+  filter_cli_cmd="grep $o_regex_type -f /dev/fd/$filter_cli"
+else
+  filter_cli_cmd='cat'
+fi
+
+$filter_cli_cmd </dev/fd/$install >/dev/fd/$fl_install
+$filter_cli_cmd </dev/fd/$upgrade >/dev/fd/$fl_upgrade
+$filter_cli_cmd </dev/fd/$remove  >/dev/fd/$fl_remove
+
+exec {install}<&- {upgrade}<&- {remove}<&-
+install=$fl_install
+upgrade=$fl_upgrade
+remove=$fl_remove
+
+########################################################################
+# Generate update command stream:
+
+if [ ${o_comment:-0} -eq 1 ]; then
+  printf '%s\n' \
+    "#!/bin/sh" \
+    "#  Generated by slackup on host: $(hostname), $(date)"
+fi
+
+gen_up()
+{
+  local pkg_opt="$1"
+  while read pkgfile
+  do
+    pkgfile=$( sed 's/\([^-+/_.:@[:alnum:]]\)/\\\1/g' <<< "$pkgfile" )  # sanitise
+    if [ ${o_comment:-0} -eq 1 ]; then
+      printf '#\n#  %s\n#\n' "${pkgfile##*/}"
+    fi
+    case "$pkgfile" in
+      http://* | https://* )
+        printf 'curl --retry 3 -C - -O %s\n' "$pkgfile"
+        [ ${o_verify_pkg_sig:-0} -eq 1 ] && printf 'curl --retry 3 -O %s.asc\n' "$pkgfile"
+        pkgfile=${pkgfile##*/}
+        ;;
+    esac
+    if [ ${o_verify_pkg_sig:-0} -eq 1 ]; then
+      printf 'gpg --verify \\\n  %s \\\n  %s \\\n&&  ' \
+        "$pkgfile.asc" "$pkgfile"
+    fi
+    printf 'upgradepkg %s %s' "$pkg_opt" "$pkgfile"
+    if [ ${o_post_install:-0} -eq 1 ]; then
+      pkgname=${pkgfile##*/}
+      pkgname=${pkgname%-?*-?*-?*.t?z}
+      post_cmd="$POST_INSTALL_DIR/$pkgname"
+      if [ -x "$post_cmd" ]; then
+        printf ' \\\n&&  %s %s' "$post_cmd" "$pkgfile"
+      fi
+    fi
+    printf '\n'
+  done
+}
+
+gen_rm()
+{
+while read pkg
+  do
+    pkg=$( sed 's/\([^-+/_.@[:alnum:]]\)/\\\1/g' <<< "$pkg" )  # sanitise
+    if [ ${o_comment:-0} -eq 1 ]; then
+      printf '#\n#  %s\n#\n' "$pkg"
+    fi
+    printf 'removepkg %s\n' "$pkg"
+  done
+}
+
+gen_list()
+{
+  [ ${o_do_install:-1} -eq 1 ]  &&  cat < /dev/fd/$install
+  [ ${o_do_upgrade:-1} -eq 1 ]  &&  cat < /dev/fd/$upgrade
+  [ ${o_do_remove:-1} -eq 1 ]   &&  cat < /dev/fd/$remove
+}
+
+gen_shell_commands()
+{
+  [ ${o_do_install:-1} -eq 1 ]  &&  gen_up '--install-new' < /dev/fd/$install
+  [ ${o_do_upgrade:-1} -eq 1 ]  &&  gen_up < /dev/fd/$upgrade
+  [ ${o_do_remove:-1} -eq 1 ]   &&  gen_rm < /dev/fd/$remove
+}
+
+if [ ${o_list_only:-0} -eq 1 ]; then
+  gen_list
+elif [ ${o_execute:-0} -eq 1 ]; then
+  ( cd "${SLACKUP_CACHE_DIR:-.}"  &&  gen_shell_commands | /bin/sh )
+else
+  gen_shell_commands
+fi
+
+########################################################################
+# cleanup:
+
+cd /tmp  &&  rm -r "$workdir"
+
+################################################################# End. #

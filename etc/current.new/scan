@@ -1,0 +1,18 @@
+# /etc/slackscan/current/scan
+#
+#  List of locations where 'slackscan' can recursively find
+#  slackware packages.
+#
+#  Each line may contain the path of a local directory, or
+#  the URL of a remote CHECKSUMS.md5 file.
+#
+
+# These entries below use the mirrors.slackware.com redirector to
+# find a nearby mirror. If you have a preferred mirror then
+# adjust accordingly.
+
+https://mirrors.slackware.com/slackware/slackware64-current/slackware64/CHECKSUMS.md5
+
+# Uncomment to include a local directory of packages as an additional
+# package source::
+# /local/slackware/packages/

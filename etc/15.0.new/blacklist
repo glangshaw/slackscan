@@ -1,0 +1,25 @@
+# /etc/slackscan/15.0/blacklist
+# Format: basic-regex
+#
+#  This file is the 'blacklist' file for the 'slackscan' utility.
+#  Package files matching one of the following patterns will
+#  be excluded from install and upgrade actions.
+#
+#  Caution!
+#    Remember these are regexes. Watch out for partial matches
+#    e.g.
+#    '/pan' would blacklist both 'pan' and 'pango' which is likely
+#    not what your intended. I would suggest sticking with patterns
+#    like:
+#    /xap/pan-
+#
+
+## Uncomment to prevent accidentally installing 32bit packages
+## on a 64bit system:
+#-i[456]86-[^-\.]\+\.t.z$
+
+## Uncomment to exclude kernel source:
+# /kernel-source-
+
+## Uncomment to exclude the 'huge' kernel:
+# /kernel-huge-

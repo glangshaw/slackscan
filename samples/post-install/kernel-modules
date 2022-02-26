@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+#  This is a post-install script for slackup that will generate a
+#  new initrd and update the vmlinuz and initrd.gz files in the EFI
+#  ELILO directory whenever kernel-modules is installed or upgraded.
+#
+#  Install it into /etc/slackup/post-install/kernel-modules and use it
+#  with an elilo config as follows:
+#
+#    image=vmlinuz
+#      initrd=initrd.gz
+#      read-only
+#      label=slackware
+#
+#  To run successfully you will need to have correctly configured
+#  your /etc/mkinitrd.conf file for your system.
+#
+
+PATH=/usr/bin:/usr/sbin:/bin:/sbin
+LANG=C
+umask 022
+unset IFS
+
+# Where to put the vmlinuz and initrd.gz files:
+ELILO_DIR=/boot/efi/EFI/Slackware/
+
+########################################################################
+# Functions:
+
+die()
+{
+  >&2 printf "%s\n" "$*"
+  exit 1
+}
+
+get_kernel_modules_version()
+{
+  local pkgfile=${1##*/}
+  local version
+
+  # return 1 if $1 is not a correctly named kernel-modules package file.
+  [[ "$pkgfile" =~ kernel-modules-[^-]+-[^-]+-[^-]+\.t.z ]] || exit 1
+
+  version="${pkgfile##kernel-modules-}"
+  printf "%s" "${version%-*-*}"
+}
+
+get_efi_mount_state()
+{
+  local dev mnt type opts
+  read dev mnt type opts < <( grep '^[^ ]\+\W/boot/efi\W' /proc/self/mounts )
+  printf "%s" "${opts%%,*}"
+}
+
+########################################################################
+# main:
+
+kver=$( get_kernel_modules_version "$1" ) \
+  || die "Argument doesn't look like a kernel-modules package filename!"
+
+
+old_state=$( get_efi_mount_state )
+
+case "$old_state" in
+  ro)  mount -o remount,rw /boot/efi \
+         || die "Failed to remount /boot/efi read-write"
+       ;;
+  "")  mount -o rw /boot/efi \
+         || die "Failed to mount /boot/efi read-write"
+       ;;
+esac
+
+mkinitrd -F -c -k "$kver" -o "/boot/initrd-$kver.gz" \
+  || die "Failed to generate initrd"
+
+cp "/boot/vmlinuz-generic-$kver" "${ELILO_DIR%/}/vmlinuz" \
+  && cp "/boot/initrd-$kver.gz" "${ELILO_DIR%/}/initrd.gz" \
+  || die "Error copying files to $ELILO_DIR"
+
+sync
+
+case "$old_state" in
+  ro)  mount -o remount,ro /boot/efi  ;;
+  "")  umount /boot/efi               ;;
+esac
+
+exit 0
+
+################################################################# End. #

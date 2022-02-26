@@ -3,7 +3,7 @@
 #  Slackbuild to package slackscan scripts.
 
 NAME=slackscan
-VERSION=2.11.1
+VERSION=3.0
 ARCH=noarch
 BUILD=1
 
@@ -15,21 +15,24 @@ PKG="$workdir/pkg"
 
 mkdir "$PKG" && chmod 755 "$PKG" && cd "$PKG" || exit 1
 for dir in \
-  install usr/sbin etc/slackscan usr/man/man8
+  install usr/sbin etc/slackscan etc/slackup/post-install usr/man/man8
 do
   install -o root -g root -m 755 -d "$dir"
 done
 
 cd "$CWD"
 
+( cd etc && cp -r * "$PKG/etc/slackscan/" )
 install -t "$PKG/usr/sbin/" -o root -g root -m 755 sbin/*
-install -t "$PKG/usr/doc/slackup-$VERSION" -o root -g root -m 644 README*
+install -t "$PKG/usr/doc/slackscan-$VERSION" -o root -g root -m 644 README*
+install -t "$PKG/usr/doc/slackscan-$VERSION/slackup/post-install" -o root -g root -m 644 samples/post-install/*
+
+gzip -c man/slackup.8 \
+  > "$PKG/usr/man/man8/slackup.8.gz"
 gzip -c man/slackscan.8 \
   > "$PKG/usr/man/man8/slackscan.8.gz"
 gzip -c man/slackscan_update_generator.8 \
   > "$PKG/usr/man/man8/slackscan_update_generator.8.gz"
-
-install -T -o root -g root -m 644 etc/default.conf "$PKG/etc/slackscan/default.conf.new"
 
 install -t "$PKG/install/" -o root -g root -m 755 doinst.sh
 cat <<-_EOF > "$PKG/install/slack-desc"

@@ -1,33 +1,30 @@
-.TH SLACKSCAN 8 2022-02-13
+.TH SLACKSCAN 8 2022-02-28
 .SH NAME
 slackscan \- Slackware Package Repository difference scanner
 .SH SYNOPSIS
 .B slackscan
-[ \fB-N\fR ] [ [ \fB-f \fICONFIG\fR ] | [ \fB\-p \fIPROFILE\fR ]
+[ \fB-NBFP\fR ] [ \fB\-p \fIPROFILE\fR ]
 [ \fB\-i \fIFILENAME\fR ] [ \fB\-u \fIFILENAME\fR ] [ \fB\-r \fIFILENAME\fR ]
 .SH DESCRIPTION
 .B slackscan
-will compare the packages currently installed on a Slackware system to
-the combined list of all available package files found across its
-configured source locations. It will then write a list of packages or
-package files to the \fIFILENAME\fR(s) specified.
+will scan the locations specified in its configuration profile for
+available Slackware package files. filter and blacklists are then
+applied and any package files that have not been excluded are compared
+to the packages installed on the host system. It will then write a
+list packages or package files to the \fIFILENAME\fR(s) specified with
+the \fB\-i\fR, \fB\-u\fR, and \fB\-r\fR options. These output files
+many then be passed to other utility programs for action.
 .PP
 .TP
-.I CONFIG
-slackscan configuration file to be used.
-.TP
 .I PROFILE
-slackup configuration profile to be used.
+name of the slackscan configuration profile to be used.
 .TP
 .I FILENAME
 output filename. '\fB\-\fR' can be used to specify \fBstdout\fR.
 .SH OPTIONS
 .TP
-.BI \-f " CONFIG"
-specify the configuration file to use for this scan.
-.TP
 .BI \-p " PROFILE"
-use the config file contained in the specified \fBslackup\fR(8) \fIPROFILE\fR.
+use the config file contained in the specified \fBslackscan\fR(8) \fIPROFILE\fR.
 .TP
 .BI \-i " FILENAME"
 specify output \fIFILENAME\fR to hold the list of package files that need to be installed.
@@ -42,38 +39,78 @@ specify output \fIFILENAME\fR to hold the list of packages that need to be remov
 do not gpg --verify any \fBCHECKSUMS.md5\fR files specified as package
 source locations.
 .TP
+.B \-B
+ignore any blacklist file that is part of the configuration profile.
+.TP
+.B \-F
+ignore any filter file that is part of the configuration profile.
+.TP
+.B \-P
+ignore any protect file that is part of the configuration profile.
+.TP
 .B \-h
 show usage text.
+.SH ENVIRONMENT
+.TP
+.B SLACKSCAN_PROFILE
+may be set to override the default profile name. A profile name
+specified with the \fB\-p\fR option on the command line will have
+precedence over this environment variable. When unset, the default
+is: '\fIdefault\fR'.
 .SH FILES
-The configuration file contains a list of package locations, one per
-line, which are to be scanned for packages. A package location may be
-one of:
+.B slackscan
+is configured through the use of configuration 'profiles'. Each
+profile comprises of a set of files stored in a common profile
+directory located at: \fB/etc/slackscan/\fIPROFILE\fB/\fR, where
+\fIPROFILE\fR is the name of the profile.
+.PP
+Within each profile directory there will be one to four files,
+of which only the 'scan' file is mandatory:
+.TP
+.BI /etc/slackscan/ PROFILE /scan
+contains a list of package locations, one per line, which are to
+be scanned for packages. A package location may be one of:
 .RS
-.PP
+.IP
 The absolute path of a directory on the filesystem.
-.PP
-The absolute path of a \fBCHECKSUMS.md5\fR in a directory on the filesystem.
-.PP
+.IP
+The absolute path of a \fBCHECKSUMS.md5\fR in a directory on the
+filesystem.
+.IP
 The URL of a \fBCHECKSUMS.md5\fR file on a remote http(s) web-server.
 .RE
+.TP
+.BI /etc/slackscan/ PROFILE /filter
+A set of \fBregex\fR(7) that will be applied to the list of available
+package files. Only matching package files will be included in the
+comparision to the installed system.
+.TP
+.BI /etc/slackscan/ PROFILE /blacklist
+A set of \fBregex\fR(7) that will be applied to the list of available
+package files. Matching package files will be excluded from the
+comparision to the installed system..
+.TP
+.BI /etc/slackscan/ PROFILE /protect
+A set of \fBregex\fR(7) to be applied to the list of packages that
+have been identified for removal owing to their package file nolonger
+being avaiable. Matching packages will be excluded from the output.
 .PP
-The search order for the config file is as follows:
+By default the patterns in the filter, blacklist and protect files
+will be interpreted as \fBbasic-regex\fR.  To have \fBslackscan\fR
+interpret them as \fBextended-regex\fR include a comment line as
+follows:
 .RS
-.PP
-As specified by the \fB\-p\fR or \fB\-f\fR options.
-.PP
-As specifed in the \fBSLACKUP_PROFILE\fR environment variable
-.PP
-Slackscan's default: \fB/etc/slackscan/default.conf\fR
-.PP
-Slackup's default: \fB/etc/slackup/default/scan\fR
-.RE
-.PP
+\fB
+.nf
+# Format: extended-regex
+.fi
+\fR
+..RE
 .SH EXAMPLES
-There's really not much to say here:
+A basic invocation using the default profile might look like this:
 .RS
 .nf
-slackscan -i install.list -u update.list -r remove.list
+.B slackscan -i install.list -u update.list -r remove.list
 .fi
 .RE
 .SH SEE ALSO

@@ -1,0 +1,152 @@
+.TH SLACKUP 8 2022-02-26
+.SH NAME
+slackup \- Slackware package update assistant
+.SH SYNOPSIS
+.B slackup
+[ \fIOPTIONS\fR ] [ \fB\-l\fR | \fB\-x\fR ] [ \fB\-p \fIPROFILE\fR ]
+[ \fIPATTERN\fR ...]
+.TP
+.I PROFILE
+configuration profile to be used.
+.TP
+.I PATTERN
+\fBregex\fR(7) pattern. Limit output to matching files or packagess.
+.SH DESCRIPTION
+.B slackup
+will invoke
+.BR slackscan (8)
+in order to determine which packages on a Slackware system need to
+be installed, updated or removed, and generate either: a
+list of packages requiring action; or a stream of POSIX shell commands
+that, when executed, would bring the installed system inline with the
+list of packages identified by
+.BR slackscan (8).
+.PP
+unless invoked with the \fB\-x\fR option,
+.B slackup
+will only writes to \fBstdout\fR, and makes no changes itself.
+.SH OPTIONS
+.TP
+.B \-l
+list package/pkgfile names only. Do not generate shell-commands.
+.TP
+.B \-x
+execute generated shell-commands automatically. Downloaded files
+will be stored in \fBSLACKUP_CACHE_DIR\fR or its default location:
+\fI/var/cache/packages\fR.
+.TP
+.B \-i
+include invocation of post-install scripts.
+.TP
+.B \-s
+include gpg signature verification of package files.
+.TP
+.B \-c
+add comment lines to the output to be more readable.
+.TP
+.B \-h
+show usage text.
+.TP
+.B \-E
+interpret PATTERN as extended-regex. The default is to interpret them
+as basic-regex.  This option applies only to patterns specified on the
+command-line.
+.TP
+.B \-N
+do not gpg --verify any CHECKSUMS.md5 files used. This is potentially
+insecure.
+.TP
+.B \-I
+ignore new packages.
+.TP
+.B \-U
+ignore updated packages.
+.TP
+.B \-R
+ignore removed packages.
+.TP
+.B \-B
+ignore the 'blacklist' file.
+.TP
+.B \-F
+ignore the 'filter' file.
+.TP
+.B \-P
+ignore the 'protect' file.
+.SH ENVIRONMENT
+.TP
+.B SLACKSCAN_PROFILE
+may be set to override the default profile name. A profile name
+specified with the \fB\-p\fR option on the command line will have
+precedence over this environment variable. When unset, the default
+is: '\fIdefault\fR'.
+.TP
+.B SLACKUP_CACHE_DIR
+may be set to override the default location in which downloaded
+packages are stored when \fBslackup\fR is used with the \fB\-x\fR
+option. When unset, the default is: \fI/var/cache/packages\fR.
+.SH FILES
+.TP
+.BR /etc/slackup/post-install/
+A directory containing post-install scripts to be run after a package
+is installed or upgraded. To supply a post-install script, install it
+into this directory with the name of the package to which it
+applies.
+.SH EXAMPLES
+When the output of slackup is passed to a shell for execution, either
+through a pipeline or a file, any remote package files will be
+downloaded to the current directory. For this reason it's a good idea
+to make a dedicated directory and use that when invoking slackup in
+this manner, e.g.
+.PP
+.RS
+\fB
+.nf
+mkdir my_updates
+cd my_updates
+slackup -si > updates.sh
+sh ./updates.sh
+.fi
+\fR
+.RE
+.PP
+It would also be prudent to review the contents of \fIupdates.sh\fR
+prior to running it.
+.PP
+As this is a little awkward, the \fB\-x\fR option can be used to
+automatically execute the generated commands. When \fB\-x\fR is used,
+any downloaded files will be put in the directory specified by the
+\fBSLACKUP_CACHE_DIR\fR environment variable, or its default location:
+\fI/var/cache/packages\fR,but see \fBNOTES\fR below.
+.SH NOTES
+.PP
+Since using '\fB\-x\fR' doesn't give the user the chance to review
+what changes are about to be applied, running \fBslackup\fR without
+the \fB\-x\fR option prior to running it with \fB\-x\fR is a wise
+precaution. However, even then, there is still a window of exposure
+between the running of the two commands where changes to the list of
+available packages might occur. Using \fB\-x\fR is not recommended if
+this possibility is a concern.
+.PP
+When \fB\-x\fR is used the contents of the directory specified in
+\fBSLACKUP_CACHE_DIR\fR are not removed, neither before or after the
+generated commands are executed. The user may want to clear this
+periodically to reclaim diskspace.
+.PP
+.B Post-install scripts:
+.RS
+When invoked with the \fB\-i\fR option, \fBslackup\fR will look in the
+post-install directory for an executable/shell-script with the same
+name as the package. If found, an invocation of that executable will
+be included. \fBslackup\fR passes a single argument to the executable
+which will be the full pathname of the package-file that has just been
+installed or upgraded.
+.PP
+For example: if one wanted a
+.BR mkinitrd (8)
+command to be executed after installing or upgrading the
+\fIkernel-modules\fR package then it can be placed in a script named:
+\fI/etc/slackup/post-install/kernel-modules\fR
+.RE
+.SH SEE ALSO
+.BR slackscan (8)

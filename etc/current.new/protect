@@ -1,0 +1,20 @@
+# /etc/slackscan/current/protect
+# Format: basic-regex
+#
+#  This file is the 'protect' file for the 'slackscan' utility.
+#
+#  This is essentially a blacklist specific to removal operations
+#  and should be used to prevent the removal of packages whose
+#  package file is no longer available in any configured location.
+#
+#  Important Note:
+#    unlike the blacklist file which matches the full path of the package file,
+#    this file matches only package names, so there is no path components or
+#    \.t.z suffix to match.
+#
+
+## uncomment the following to protect any packages tagged _local:
+# _local$
+
+## uncomment the following to protect any packages tagged _SBo (slackbuilds.org):
+# _SBo$
