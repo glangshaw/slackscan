@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='2.11'
+   version='2.12'
 
 #  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -80,125 +80,37 @@ type mktemp find grep sed cut sort join uniq curl gpg >/dev/null || exit 1
 # Defaults:
 
 DEFAULT_CONFIG_FILE="/etc/slackscan/default.conf"
-if [ -n "$SLACKUP_PROFILE" ] \
-  || [ ! -e "$DEFAULT_CONFIG_FILE" ] \
-  && [ -e /etc/slackup/default/scan ]; then
-  DEFAULT_CONFIG_FILE="/etc/slackup/${SLACKUP_PROFILE:-default}/scan"
-fi
 
 ########################################################################
 # functions:
 
-die()
+function die()
 {
   2>&1 printf "%s: %s\n" "${0##*/}" "${2:-aborted.}"
   exit ${1:-1}
 }
+remove_comments()
+{
+  grep -v -E '^ *(#|$)' "${1:--}"
+}
 
-########################################################################
-# parse arguments
+file_regex_type()
+{
+  grep -q '^[[:space:]]*# Format: extended-regex' ${1:--} \
+    &&  printf '-E'
+}
 
-unset o_install o_remove o_upgrade o_config o_profile o_usage o_skip_verify
+function get_pkgdb_dir()
+{
+  local dir
 
-if [ $# -eq 0 ]; then
-   o_usage=1
-fi
+  for dir in $ROOT/var/lib/pkgtools/packages $ROOT/var/log/packages ''
+  do
+    [ -d "$dir" ]  &&  break
+  done
 
-while getopts ':f:p:i:u:r:hN' opt
-do
-  case "$opt" in
-    f)  o_config=$OPTARG   ;;
-    p)  o_config="/etc/slackup/$OPTARG/scan" ;;
-    h)  o_usage=1          ;;
-    i)  o_install=$OPTARG  ;;
-    r)  o_remove=$OPTARG   ;;
-    u)  o_upgrade=$OPTARG  ;;
-    N)  o_skip_verify=1    ;;
-    \?) die 1 "Unexpected option: -$OPTARG" ;;
-    :)  die 1 "Missing operand for option -$OPTARG" ;;
-  esac
-done
-shift $(( OPTIND - 1 ))
-
-########################################################################
-# read config file to Determine package sources:
-
-case "$o_config" in
-  - ) conf=/dev/stdin ;;
-  '') conf=$DEFAULT_CONFIG_FILE ;;
-  *)  conf=$o_config ;;
-esac
-
-mapfile -t pkg_sources < <( grep -v -E '^ *(#|$)' "$conf" ) || exit 1
-
-########################################################################
-# Determine Package data directory:
-
-if [ -d "$ROOT/var/lib/pkgtools/packages" ]; then
-  pkgdatadir="/var/lib/pkgtools/packages"
-else
-  pkgdatadir="/var/log/packages"
-fi
-
-test -d "${ROOT}$pkgdatadir" \
-  && test -r "${ROOT}$pkgdatadir" \
-  && test -x "${ROOT}$pkgdatadir" \
-  || { echo "error: Can't access ${ROOT}$pkgdatadir" >&2 ; exit 1 ; }
-
-########################################################################
-
-if [ -z "$o_usage" ] && [ -z "$o_install" ] && [ -z "$o_upgrade" ] && [ -z "$o_remove" ]; then
-   printf "slackscan: one of -i, -o, -r is required.\n\n" 1>&2
-   o_usage=1
-fi
-
-if [ "$o_usage" ]; then
-  printf '%s\n' \
-    'Usage:' \
-    '         slackscan [ -N ] [ [ -f filename ] | [ -p profile ] ] ' \
-    '                   [-i filename ] [ -u filename ] [ -r filename ] ' \
-    '' \
-    '           where, ' \
-    '             -f :   specifies the filename of the config file' \
-    '             -p :   specifies 'slackup' profile name as alternative way to' \
-    '                    select a config file' \
-    '             -i :   specifies file to hold list of packages to be installed. ' \
-    '             -u :   specifies file to hold list of packages to be upgraded. ' \
-    '             -r :   specifies file to hold list of packages to be removed. ' \
-    "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files. " \
-    "                    (INSECURE). " \
-    ''
-   printf 'Configured package locations in %s:\n' "$conf"
-   printf '  %s\n' "${pkg_sources[@]}"
-   exit 0
-fi
-
-unset conf
-
-########################################################################
-# output files:
-
-[ "$o_install" = "-" ] && o_install=/dev/fd/1
-[ "$o_upgrade" = "-" ] && o_upgrade=/dev/fd/1
-[ "$o_remove" = "-" ]  && o_remove=/dev/fd/1
-
-[ ! -z "$o_install" ] && { exec {report_i}<> "$o_install" || exit 1 ; }
-[ ! -z "$o_upgrade" ] && { exec {report_u}<> "$o_upgrade" || exit 1 ; }
-[ ! -z "$o_remove" ]  && { exec {report_r}<> "$o_remove"  || exit 1 ; }
-
-########################################################################
-# temporary workdir/files:
-
-workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
-  && cd "$workdir" || exit 1
-
-exec {available}<> "$workdir/available" || exit 1
-exec {installed}<> "$workdir/installed" || exit 1
-exec {table}<>     "$workdir/table"     || exit 1
-exec {checksums}<> "$workdir/checksums" || exit 1
-exec {signature}<> "$workdir/signature" || exit 1
-
-########################################################################
+  [ -n "$dir" ]  &&  printf "%s" "$dir"
+}
 
 function reformat_installed()
 {
@@ -232,6 +144,10 @@ function reformat_md5()
 
 function fetch_md5()
 {
+  local signature
+
+  exec {signature}<> "${workdir:-${TMPDIR:-/tmp}}/signature" || exit 1
+
   if curl --retry 3 -s -f -o /dev/fd/$checksums "$1" ; then
     if [ ${o_skip_verify:-0} -ne 1 ]; then
       curl --retry 3 -s -f -o /dev/fd/$signature "$1.asc" \
@@ -241,12 +157,16 @@ function fetch_md5()
   else
     die 16 "Aborted - could not fetch $1"
   fi
+
+  exec {signature}>&-
 }
 
 function find_in_md5()
 {
   local prefix=${1%/*}
   local filename
+
+  exec {checksums}<> "${workdir:-${TMPDIR:-/tmp}}/checksums" || exit 1
 
   case "$1" in
     http://*|https://*)  fetch_md5 "$1"
@@ -264,11 +184,16 @@ function find_in_md5()
   reformat_md5 "$prefix" < "$filename" \
     | reformat_available \
     | sort -k 1,1
+
+  exec {checksums}>&-
 }
 
 function find_available()
 {
-  local pkg_source
+  local pkg_source pkg_sources
+
+  mapfile -t pkg_sources < <( remove_comments "$conf" ) \
+    || die 1 "Could not read configuration file"
 
   for pkg_source in ${pkg_sources[@]}
   do
@@ -287,16 +212,24 @@ function list_available()
 
 function list_installed()
 {
-  find -H "${ROOT}$pkgdatadir" -type f \
+  local pkgdatadir=$( get_pkgdb_dir )
+
+  find -H "$pkgdatadir" -type f \
     | reformat_installed \
     | sort -k 1,1
 }
 
-########################################################################
-# Generate lookup table:
+function create_table
+{
+  local dups available installed
+
+  exec {available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  || exit 1
+  exec {installed}<> "${workdir:-${TMPDIR:-/tmp}}//installed" || exit 1
 
   list_available >&$available
-  list_installed >&$installed
+
+  list_installed >&$installed \
+    || die 1 "Could not query list of installed packages"
 
   #  Duplicates can lead to incorrect output, so abort.
   dups=$( wc -l < <( uniq -d <( cut -f1 -d ' ' /dev/fd/$installed) ) )
@@ -307,30 +240,129 @@ function list_installed()
   sort -u -k 1,1 <( cut -f1 -d ' ' /dev/fd/$installed ) \
                  <( cut -f1 -d ' ' /dev/fd/$available ) \
     | join -a 1 -e 'not-installed' -o 1.1,2.2 - /dev/fd/$installed \
-    | join -a 1 -e 'not-available' -o 1.1,1.2,2.2,2.3 - /dev/fd/$available \
-    >&$table
+    | join -a 1 -e 'not-available' -o 1.1,1.2,2.2,2.3 - /dev/fd/$available
+
+  exec {available}>&-
+  exec {installed}>&-
+}
+
+function report()
+{
+  local package installed available pkgpath
+  local report_i report_U report_r
+
+  [ "$o_install" = "-" ] && o_install=/dev/fd/1
+  [ "$o_upgrade" = "-" ] && o_upgrade=/dev/fd/1
+  [ "$o_remove" = "-" ]  && o_remove=/dev/fd/1
+
+  [ ! -z "$o_install" ] && { exec {report_i}<> "$o_install" || exit 1 ; }
+  [ ! -z "$o_upgrade" ] && { exec {report_u}<> "$o_upgrade" || exit 1 ; }
+  [ ! -z "$o_remove" ]  && { exec {report_r}<> "$o_remove"  || exit 1 ; }
+
+  while read package installed available pkgpath
+  do
+    if [ "$o_upgrade" \
+      -a "$installed" != 'not-installed' \
+      -a "$available" != 'not-available' \
+      -a "$available" != "$installed" ]; then
+      echo "$pkgpath" >&$report_u
+    fi
+    if [ "$o_install" \
+      -a "$installed" == 'not-installed' ]; then
+      echo "$pkgpath" >&$report_i
+    fi
+    if [ "$o_remove" \
+      -a "$installed" != 'not-installed' \
+      -a "$available" == 'not-available' ]; then
+      echo "$installed" >&$report_r
+    fi
+  done
+
+  [ -n "$report_i" ]  &&  exec {report_i}>&-
+  [ -n "$report_u" ]  &&  exec {report_u}>&-
+  [ -n "$report_r" ]  &&  exec {report_r}>&-
+}
 
 ########################################################################
-# Report:
+# parse arguments
 
-while read package installed available pkgpath
+unset o_install o_remove o_upgrade o_config o_profile o_usage o_skip_verify
+
+if [ $# -eq 0 ]; then
+   o_usage=1
+fi
+
+while getopts ':f:p:i:u:r:hN' opt
 do
-   if [ "$o_upgrade" \
-        -a "$installed" != 'not-installed' \
-        -a "$available" != 'not-available' \
-        -a "$available" != "$installed" ]; then
-      echo "$pkgpath" >&$report_u
-   fi
-   if [ "$o_install" \
-        -a "$installed" == 'not-installed' ]; then
-     echo "$pkgpath" >&$report_i
-   fi
-   if [ "$o_remove" \
-        -a "$installed" != 'not-installed' \
-        -a "$available" == 'not-available' ]; then
-      echo "$installed" >&$report_r
-   fi
-done < /dev/fd/$table
+  case "$opt" in
+    f)  o_config=$OPTARG   ;;
+    p)  o_profile=$OPTARG  ;;
+    h)  o_usage=1          ;;
+    i)  o_install=$OPTARG  ;;
+    r)  o_remove=$OPTARG   ;;
+    u)  o_upgrade=$OPTARG  ;;
+    N)  o_skip_verify=1    ;;
+    \?) die 1 "Unexpected option: -$OPTARG" ;;
+    :)  die 1 "Missing operand for option -$OPTARG" ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+
+if [ -n "$o_config" ]; then
+  case "$o_config" in
+    - ) conf=/dev/stdin  ;;
+    *)  conf=$o_config   ;;
+  esac
+elif [ -n "$o_profile" ] || [ -n "$SLACKUP_PROFILE" ]; then
+  conf="/etc/slackup/${o_profile:-${SLACKUP_PROFILE}}/scan"
+  filter="/etc/slackup/${o_profile:-${SLACKUP_PROFILE}}/filter"
+  blacklist="/etc/slackup/${o_profile:-${SLACKUP_PROFILE}}/blacklist"
+  protect="/etc/slackup/${o_profile:-${SLACKUP_PROFILE}}/protect"
+else
+  conf=$DEFAULT_CONFIG_FILE
+fi
+
+########################################################################
+
+if [ -z "$o_usage" ] && [ -z "$o_install" ] && [ -z "$o_upgrade" ] && [ -z "$o_remove" ]; then
+   printf "slackscan: one of -i, -o, -r is required.\n\n" 1>&2
+   o_usage=1
+fi
+
+if [ "$o_usage" ]; then
+  printf '%s\n' \
+    'Usage:' \
+    '         slackscan [ -N ] [ [ -f filename ] | [ -p profile ] ] ' \
+    '                   [-i filename ] [ -u filename ] [ -r filename ] ' \
+    '' \
+    '           where, ' \
+    '             -f :   specifies the filename of the config file' \
+    '             -p :   specifies 'slackup' profile name as alternative way to' \
+    '                    select a config file' \
+    '             -i :   specifies file to hold list of packages to be installed. ' \
+    '             -u :   specifies file to hold list of packages to be upgraded. ' \
+    '             -r :   specifies file to hold list of packages to be removed. ' \
+    "             -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files. " \
+    "                    (INSECURE). " \
+    ''
+   printf 'Configured package locations in %s:\n' "$conf"
+   printf '  %s\n' "${pkg_sources[@]}"
+   exit 0
+fi
+
+########################################################################
+
+workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
+  && cd "$workdir" || exit 1
+
+exec {table}<> "$workdir/table"  ||  exit 1
+
+create_table >&$table
+
+report < /dev/fd/$table
+
+exec {table}>&-
 
 ########################################################################
 # clean-up
