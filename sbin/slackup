@@ -67,7 +67,7 @@ unset o_list_only
 unset o_execute
 unset o_ignore_blacklist
 unset o_ignore_filter
-unset O_ignore_protect
+unset o_ignore_protect
 o_verify_checksums=1
 o_do_install=1
 o_do_upgrade=1
@@ -166,6 +166,7 @@ exec {fl_remove}<>   "$workdir/fl_remove.list"       ||  exit 1
   -u /dev/fd/$upgrade \
   -r /dev/fd/$remove \
   || die  1 "slackscan exited rc=$?."
+
 
 ########################################################################
 # Apply filters the command-line:
