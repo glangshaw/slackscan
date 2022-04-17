@@ -72,7 +72,7 @@ might look something like this:
 ```
 slackscan -i install.list -u update.list -r remove.list
 cat install.list update.list | slackscan_update_generator | sh
-xargs -r removepkg < removals.list
+xargs -r removepkg < remove.list
 ```
 
 
