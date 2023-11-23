@@ -38,7 +38,7 @@ necessary to action any identified changes. If asked, it can also
 directly execute the generated commands, but a prudent user will
 likely want to examine them first.
 
-'slackup' adds additional functionality such as command-line patterm
+'slackup' adds additional functionality such as command-line pattern
 matching to limit operation to a subset of packages, and support for
 the automated running of post-install scripts.
 
