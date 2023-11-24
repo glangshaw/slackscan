@@ -1,9 +1,9 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='3.2'
+   version='3.3'
 
-#  Copyright (c) 2013-2021, Gary Langshaw. <gary.langshaw@gmail.com>
+#  Copyright (c) 2013-2023, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
 #  purpose with or without fee is hereby granted, provided that the above
 #  copyright notice and this permission notice appear in all copies.
@@ -252,14 +252,8 @@ function create_table
 
   list_available_filtered >&$fd_available
 
-  list_installed >&$fd_installed \
-    || die 1 "Could not query list of installed packages"
+  list_installed | sort -Vr -k 2,2 | sort -u -k 1,1 >&$fd_installed
 
-  #  Duplicates can lead to incorrect output, so abort.
-  dups=$( wc -l < <( uniq -d <( cut -f1 -d ' ' /dev/fd/$fd_installed) ) )
-  if [ ${dups:-0} -gt 0 ]; then
-    die 1 "Aborted - multiple packages installed with the same base package name."
-  fi
 
   sort -u -k 1,1 <( cut -f1 -d ' ' /dev/fd/$fd_installed ) \
                  <( cut -f1 -d ' ' /dev/fd/$fd_available ) \

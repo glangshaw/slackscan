@@ -117,6 +117,18 @@ comparisions.
 .PP
 Within a single package source location the file with the highest version
 number will be compared.
+.PP
+When two versions of the same package are already installed, slackscan
+will compare available packages to the highest version installed, ignoring
+any lower numbered versions of the package. Note however that
+.BR upgradepkg (8)
+will remove all older versions of a package when upgrading them, so it is
+probably best to add \fIblacklist\fR and \fIprotect\fR file entries for
+any such packages and control them manually with
+.BR installpkg (8)
+and
+.BR removepkg (8)\fR.
+
 .SH EXAMPLES
 A basic invocation using the default profile might look like this:
 .RS
@@ -126,3 +138,6 @@ A basic invocation using the default profile might look like this:
 .RE
 .SH SEE ALSO
 .BR slackup (8)
+.BR installpkg (8)
+.BR removepkg (8)
+.BR upgradepkg (8)
