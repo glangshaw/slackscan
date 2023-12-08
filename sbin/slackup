@@ -49,6 +49,11 @@ remove_comments()
   grep -v -E '^ *(#|$)' "${1:--}"
 }
 
+cleanup()
+{
+  cd /tmp  &&  [ -d "$workdir" ]  &&  rm -r "$workdir"
+}
+
 ########################################################################
 # check availability of external utilities:
 
@@ -164,9 +169,13 @@ exec {fl_remove}<>   "$workdir/fl_remove.list"       ||  exit 1
   ${o_profile:+-p $o_profile} \
   -i /dev/fd/$install \
   -u /dev/fd/$upgrade \
-  -r /dev/fd/$remove \
-  || die  1 "slackscan exited rc=$?."
+  -r /dev/fd/$remove
 
+case "$?" in
+  0)  : ;;
+  2)  cleanup ; exit 0 ;;
+  *)  die 1 "slackscan exited rc=$?." ;;
+esac
 
 ########################################################################
 # Apply filters the command-line:
@@ -278,6 +287,8 @@ fi
 ########################################################################
 # cleanup:
 
-cd /tmp  &&  rm -r "$workdir"
+cleanup
+
+exit 0
 
 ################################################################# End. #

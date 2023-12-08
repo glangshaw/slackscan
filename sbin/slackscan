@@ -26,7 +26,7 @@ LC_ALL=C
 # check availability of external utilities:
 
 type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
-  || exit 1
+  || exit 16
 
 ########################################################################
 # Defaults:
@@ -46,7 +46,7 @@ count_r=0
 function die()
 {
   1>&2 printf "%s: %s\n" "${0##*/}" "${2:-aborted.}"
-  exit ${1:-1}
+  exit ${1:-16}
 }
 
 remove_comments()
@@ -69,7 +69,7 @@ function reformat_available()
 function find_in_dir()
 {
   if [ ! -d "$1" ]; then
-    die 1 "slackscan: directory not found, $1"
+    die 16 "slackscan: directory not found, $1"
   fi
 
   find -L "$1" -type f -name "*.t?z" \
@@ -78,7 +78,7 @@ function find_in_dir()
     | sort -u -k 1,1
 
   if [ $? -ne 0 ]; then
-    die 1 "error in find_in_dir()"
+    die 16 "error in find_in_dir()"
   fi
 }
 
@@ -86,7 +86,7 @@ function fetch_md5()
 {
   local fd_sig
 
-  exec {fd_sig}<> "${workdir:-${TMPDIR:-/tmp}}/signature" || exit 1
+  exec {fd_sig}<> "${workdir:-${TMPDIR:-/tmp}}/signature" || exit 16
 
   if curl --retry 3 -s -f -o /dev/fd/$fd_checksums "$1" ; then
     if [ ${o_skip_verify:-0} -ne 1 ]; then
@@ -113,7 +113,7 @@ function find_in_md5()
   local prefix=${1%/*}
   local filename
 
-  exec {fd_checksums}<> "${workdir:-${TMPDIR:-/tmp}}/checksums" || exit 1
+  exec {fd_checksums}<> "${workdir:-${TMPDIR:-/tmp}}/checksums" || exit 16
 
   case "$1" in
     http://*|https://*)  fetch_md5 "$1"
@@ -121,11 +121,11 @@ function find_in_md5()
                         ;;
 
     file://*|/* )  filename=${1#file://} ;;
-    *)  echo "unsupported: $1" ; exit 1 ;;
+    *)  echo "unsupported: $1" ; exit 16 ;;
   esac
 
   if [ ! -r "$filename" ]; then
-    die 1 "slackscan: file not found, $filename"
+    die 16 "slackscan: file not found, $filename"
   fi
 
   reformat_md5 "$prefix" < "$filename" \
@@ -141,10 +141,10 @@ function find_available()
   local pkg_source pkg_sources
 
   mapfile -t pkg_sources < <( remove_comments "$conf" ) \
-    || die 1 "Could not read configuration file"
+    || die 16 "Could not read configuration file"
 
   if [ ${#pkg_sources[@]} -eq 0 ]; then
-    die 1 "No package source locations found"
+    die 16 "No package source locations found"
   fi
 
   for pkg_source in ${pkg_sources[@]}
@@ -183,7 +183,7 @@ function list_installed()
     | sort -k 1,1
 
   if [ $? -ne 0 ]; then
-    die 1 "error in list_installed()"
+    die 16 "error in list_installed()"
   fi
 }
 
@@ -237,7 +237,7 @@ function list_available_filtered()
     | sort -u -k 1,1
 
   if [ $? -ne 0 ]; then
-    die 1 "error in list_available_filtered()"
+    die 16 "error in list_available_filtered()"
   fi
 }
 
@@ -254,8 +254,8 @@ function create_table
 {
   local dups fd_available fd_installed
 
-  exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  || exit 1
-  exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  || exit 1
+  exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  || exit 16
+  exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  || exit 16
 
   list_available_filtered >&$fd_available
 
@@ -268,7 +268,7 @@ function create_table
     | join -a 1 -e 'not-available' -o 1.1,1.2,2.2,2.3 - /dev/fd/$fd_available
 
   if [ $? -ne 0 ]; then
-    die 1 "error in create_table()"
+    die 16 "error in create_table()"
   fi
 
   exec {fd_available}>&-
@@ -284,9 +284,9 @@ function report()
   [ "$o_upgrade" = "-" ] && o_upgrade=/dev/fd/1
   [ "$o_remove" = "-" ]  && o_remove=/dev/fd/1
 
-  [ ! -z "$o_install" ] && { exec {fd_rep_i}<> "$o_install" || exit 1 ; }
-  [ ! -z "$o_upgrade" ] && { exec {fd_rep_u}<> "$o_upgrade" || exit 1 ; }
-  [ ! -z "$o_remove" ]  && { exec {fd_rep_r}<> "$o_remove"  || exit 1 ; }
+  [ ! -z "$o_install" ] && { exec {fd_rep_i}<> "$o_install" || exit 16 ; }
+  [ ! -z "$o_upgrade" ] && { exec {fd_rep_u}<> "$o_upgrade" || exit 16 ; }
+  [ ! -z "$o_remove" ]  && { exec {fd_rep_r}<> "$o_remove"  || exit 16 ; }
 
   while read package installed available pkgpath
   do
@@ -335,8 +335,8 @@ do
     F)  o_ignore_filter=1       ;;
     P)  o_ignore_protect=1      ;;
     N)  o_skip_verify=1         ;;
-    \?) die 1 "Unexpected option: -$OPTARG" ;;
-    :)  die 1 "Missing operand for option -$OPTARG" ;;
+    \?) die 16 "Unexpected option: -$OPTARG" ;;
+    :)  die 16 "Missing operand for option -$OPTARG" ;;
   esac
 done
 shift $(( OPTIND - 1 ))
@@ -379,7 +379,7 @@ workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
   && cd "$workdir" || exit 16
 
 exec {table}<> "$workdir/table"  \
-  || die 1 "Could not create table file"
+  || die 16 "Could not create table file"
 
 create_table >&$table
 
@@ -392,6 +392,12 @@ if [ ${o_show_counts:-0} -eq 1 ]; then
     "# Install: $count_i" \
     "# Upgrade: $count_u" \
     "# Remove: $count_r"
+fi
+
+if (( count_i + count_u + count_r > 0 )); then
+  rc=0
+else
+  rc=2
 fi
 
 exec {table}>&-
