@@ -3,7 +3,7 @@
 slackscan \- Slackware Package Repository difference scanner
 .SH SYNOPSIS
 .B slackscan
-[ \fB-NBFP\fR ] [ \fB\-p \fIPROFILE\fR ]
+[ \fB-NBFPc\fR ] [ \fB\-p \fIPROFILE\fR ]
 [ \fB\-i \fIFILENAME\fR ] [ \fB\-u \fIFILENAME\fR ] [ \fB\-r \fIFILENAME\fR ]
 .SH DESCRIPTION
 .B slackscan
@@ -50,6 +50,9 @@ ignore any protect file that is part of the configuration profile.
 .TP
 .B \-h
 show usage text.
+.TP
+.B \-c
+print statistics to stdout on exit.
 .SH ENVIRONMENT
 .TP
 .B SLACKSCAN_PROFILE

@@ -34,6 +34,13 @@ type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
 SLACKSCAN_DIR='/etc/slackscan'
 
 ########################################################################
+# Globals
+
+count_u=0
+count_i=0
+count_r=0
+
+########################################################################
 # functions:
 
 function die()
@@ -287,15 +294,18 @@ function report()
        [ "$available" != 'not-available' ] && \
        [ "$available" != "$installed" ]
     then
+      (( count_u++ ))
       [ "$o_upgrade" ] && echo "$pkgpath" >&$fd_rep_u
     fi
     if [ "$installed" == 'not-installed' ]
     then
+      (( count_i++ ))
       [ "$o_install" ] && echo "$pkgpath" >&$fd_rep_i
     fi
     if [ "$installed" != 'not-installed' ] && \
        [ "$available" == 'not-available' ]
     then
+      (( count_r++ ))
       [ "$o_remove" ] && echo "$installed" | apply_protect >&$fd_rep_r
     fi
   done
@@ -310,17 +320,14 @@ function report()
 
 unset o_install o_remove o_upgrade \
       o_ignore_blacklist o_ignore_filter o_ignore_protect \
-      o_config o_profile o_usage o_skip_verify
+      o_config o_profile o_usage o_skip_verify o_show_counts
 
-if [ $# -eq 0 ]; then
-   o_usage=1
-fi
-
-while getopts ':p:i:u:r:hBFNP' opt
+while getopts ':p:i:u:r:hcBFNP' opt
 do
   case "$opt" in
     p)  o_profile=$OPTARG       ;;
     h)  o_usage=1               ;;
+    c)  o_show_counts=1         ;;
     i)  o_install=$OPTARG       ;;
     r)  o_remove=$OPTARG        ;;
     u)  o_upgrade=$OPTARG       ;;
@@ -345,19 +352,15 @@ protect_file="${SLACKSCAN_DIR%/}/${o_profile}/protect"
 
 ########################################################################
 
-if [ -z "$o_usage" ] && [ -z "$o_install" ] && [ -z "$o_upgrade" ] && [ -z "$o_remove" ]; then
-   printf "slackscan: one of -i, -o, -r is required.\n\n" 1>&2
-   o_usage=1
-fi
-
 if [ "$o_usage" ]; then
   printf '%s\n' \
     'Usage:' \
-    '  slackscan [ -NBFP ] [ [ -p profile ]' \
+    '  slackscan [ -NBFPc ] [ [ -p profile ]' \
     '            [-i filename ] [ -u filename ] [ -r filename ] ' \
     '' \
     '  where, ' \
     '    -p :   specifies profile name.' \
+    '    -c :   print statistics to stdout on exit.' \
     '    -i :   specifies file to hold list of packages to be installed. ' \
     '    -u :   specifies file to hold list of packages to be upgraded. ' \
     '    -r :   specifies file to hold list of packages to be removed. ' \
@@ -381,6 +384,15 @@ exec {table}<> "$workdir/table"  \
 create_table >&$table
 
 report < /dev/fd/$table
+
+if [ ${o_show_counts:-0} -eq 1 ]; then
+  printf "%s\n" \
+    "# Package Change Statistics" \
+    "#" \
+    "# Install: $count_i" \
+    "# Upgrade: $count_u" \
+    "# Remove: $count_r"
+fi
 
 exec {table}>&-
 
