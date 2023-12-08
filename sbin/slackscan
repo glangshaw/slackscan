@@ -283,20 +283,20 @@ function report()
 
   while read package installed available pkgpath
   do
-    if [ "$o_upgrade" \
-      -a "$installed" != 'not-installed' \
-      -a "$available" != 'not-available' \
-      -a "$available" != "$installed" ]; then
-      echo "$pkgpath" >&$fd_rep_u
+    if [ "$installed" != 'not-installed' ] && \
+       [ "$available" != 'not-available' ] && \
+       [ "$available" != "$installed" ]
+    then
+      [ "$o_upgrade" ] && echo "$pkgpath" >&$fd_rep_u
     fi
-    if [ "$o_install" \
-      -a "$installed" == 'not-installed' ]; then
-      echo "$pkgpath" >&$fd_rep_i
+    if [ "$installed" == 'not-installed' ]
+    then
+      [ "$o_install" ] && echo "$pkgpath" >&$fd_rep_i
     fi
-    if [ "$o_remove" \
-      -a "$installed" != 'not-installed' \
-      -a "$available" == 'not-available' ]; then
-      echo "$installed" | apply_protect >&$fd_rep_r
+    if [ "$installed" != 'not-installed' ] && \
+       [ "$available" == 'not-available' ]
+    then
+      [ "$o_remove" ] && echo "$installed" | apply_protect >&$fd_rep_r
     fi
   done
 
