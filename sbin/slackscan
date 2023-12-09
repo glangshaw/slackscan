@@ -315,6 +315,14 @@ function report()
   [ -n "$fd_rep_r" ]  &&  exec {fd_rep_r}>&-
 }
 
+function print_stats()
+{
+  printf "%s\n" \
+    "# Package Installs: $count_i" \
+    "# Package Upgrades: $count_u" \
+    "# Package Removals: $count_r"
+}
+
 ########################################################################
 # parse arguments
 
@@ -386,12 +394,7 @@ create_table >&$table
 report < /dev/fd/$table
 
 if [ ${o_quiet:-0} -eq 0 ]; then
-  printf "%s\n" \
-    "# Package Scan Statistics" \
-    "#" \
-    "# Install: $count_i" \
-    "# Upgrade: $count_u" \
-    "# Remove: $count_r"
+  print_stats
 fi
 
 if (( count_i + count_u + count_r > 0 )); then
