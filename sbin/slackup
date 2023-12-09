@@ -164,6 +164,7 @@ exec {fl_remove}<>   "$workdir/fl_remove.list"       ||  exit 1
 [ ${o_verify_checksums:-1} -eq 0 ]  &&  slackscan_opt='-N'
 
 /usr/sbin/slackscan \
+  -q \
   ${slackscan_opt} \
   ${o_ignore_filter} ${o_ignore_blacklist} ${o_ignore_protect} \
   ${o_profile:+-p $o_profile} \

@@ -320,14 +320,14 @@ function report()
 
 unset o_install o_remove o_upgrade \
       o_ignore_blacklist o_ignore_filter o_ignore_protect \
-      o_config o_profile o_usage o_skip_verify o_show_counts
+      o_config o_profile o_usage o_skip_verify o_quiet
 
-while getopts ':p:i:u:r:hcBFNP' opt
+while getopts ':p:i:u:r:hqBFNP' opt
 do
   case "$opt" in
     p)  o_profile=$OPTARG       ;;
     h)  o_usage=1               ;;
-    c)  o_show_counts=1         ;;
+    q)  o_quiet=1               ;;
     i)  o_install=$OPTARG       ;;
     r)  o_remove=$OPTARG        ;;
     u)  o_upgrade=$OPTARG       ;;
@@ -355,12 +355,12 @@ protect_file="${SLACKSCAN_DIR%/}/${o_profile}/protect"
 if [ "$o_usage" ]; then
   printf '%s\n' \
     'Usage:' \
-    '  slackscan [ -NBFPc ] [ [ -p profile ]' \
+    '  slackscan [ -NBFPq ] [ [ -p profile ]' \
     '            [-i filename ] [ -u filename ] [ -r filename ] ' \
     '' \
     '  where, ' \
     '    -p :   specifies profile name.' \
-    '    -c :   print statistics to stdout on exit.' \
+    '    -q :   quiet: do not print statistics.' \
     '    -i :   specifies file to hold list of packages to be installed. ' \
     '    -u :   specifies file to hold list of packages to be upgraded. ' \
     '    -r :   specifies file to hold list of packages to be removed. ' \
@@ -385,9 +385,9 @@ create_table >&$table
 
 report < /dev/fd/$table
 
-if [ ${o_show_counts:-0} -eq 1 ]; then
+if [ ${o_quiet:-0} -eq 0 ]; then
   printf "%s\n" \
-    "# Package Change Statistics" \
+    "# Package Scan Statistics" \
     "#" \
     "# Install: $count_i" \
     "# Upgrade: $count_u" \
