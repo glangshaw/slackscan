@@ -23,12 +23,6 @@ PATH='/usr/bin'
 LC_ALL=C
 
 ########################################################################
-# check availability of external utilities:
-
-type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
-  || exit 16
-
-########################################################################
 # Defaults:
 
 SLACKSCAN_DIR='/etc/slackscan'
@@ -86,13 +80,14 @@ function fetch_md5()
 {
   local fd_sig
 
-  exec {fd_sig}<> "${workdir:-${TMPDIR:-/tmp}}/signature" || exit 16
+  exec {fd_sig}<> "${workdir:-${TMPDIR:-/tmp}}/signature" \
+    || die 16 "could not create 'signature' file"
 
   if curl --retry 3 -s -f -o /dev/fd/$fd_checksums "$1" ; then
     if [ ${o_skip_verify:-0} -ne 1 ]; then
       curl --retry 3 -s -f -o /dev/fd/$fd_sig "$1.asc" \
         && gpg --verify /dev/fd/$fd_sig /dev/fd/$fd_checksums >/dev/null 2>&1 \
-        || { die 16 "gpg --verify failed on $1" ; }
+        || { die 8 "gpg --verify failed on $1" ; }
     fi
   else
     die 16 "Aborted - could not fetch $1"
@@ -113,7 +108,8 @@ function find_in_md5()
   local prefix=${1%/*}
   local filename
 
-  exec {fd_checksums}<> "${workdir:-${TMPDIR:-/tmp}}/checksums" || exit 16
+  exec {fd_checksums}<> "${workdir:-${TMPDIR:-/tmp}}/checksums" \
+    || die 16 "could not create checksums file"
 
   case "$1" in
     http://*|https://*)  fetch_md5 "$1"
@@ -121,7 +117,7 @@ function find_in_md5()
                         ;;
 
     file://*|/* )  filename=${1#file://} ;;
-    *)  echo "unsupported: $1" ; exit 16 ;;
+    *)  die 16 "unsupported: $1" ;;
   esac
 
   if [ ! -r "$filename" ]; then
@@ -141,10 +137,10 @@ function find_available()
   local pkg_source pkg_sources
 
   mapfile -t pkg_sources < <( remove_comments "$conf" ) \
-    || die 16 "Could not read configuration file"
+    || die 16 "could not read configuration file"
 
   if [ ${#pkg_sources[@]} -eq 0 ]; then
-    die 16 "No package source locations found"
+    die 16 "no package source locations found"
   fi
 
   for pkg_source in ${pkg_sources[@]}
@@ -254,8 +250,11 @@ function create_table
 {
   local dups fd_available fd_installed
 
-  exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  || exit 16
-  exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  || exit 16
+  exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  \
+    || diet 16 "could not open 'available' file."
+
+  exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  \
+    || die 16 "could not open 'installed' file."
 
   list_available_filtered >&$fd_available
 
@@ -284,9 +283,17 @@ function report()
   [ "$o_upgrade" = "-" ] && o_upgrade=/dev/fd/1
   [ "$o_remove" = "-" ]  && o_remove=/dev/fd/1
 
-  [ ! -z "$o_install" ] && { exec {fd_rep_i}<> "$o_install" || exit 16 ; }
-  [ ! -z "$o_upgrade" ] && { exec {fd_rep_u}<> "$o_upgrade" || exit 16 ; }
-  [ ! -z "$o_remove" ]  && { exec {fd_rep_r}<> "$o_remove"  || exit 16 ; }
+  if [ ! -z "$o_install" ]; then
+    exec {fd_rep_i}<> "$o_install" || die 16 "could not open -i file"
+  fi
+
+  if [ ! -z "$o_upgrade" ]; then
+    exec {fd_rep_u}<> "$o_upgrade" || die 16 "could not open -u file"
+  fi
+
+  if [ ! -z "$o_remove" ]; then
+    exec {fd_rep_r}<> "$o_remove"  || die 16 "could not open -r file"
+  fi
 
   while read package installed available pkgpath
   do
@@ -322,6 +329,12 @@ function print_stats()
     "# Package Upgrades: $count_u" \
     "# Package Removals: $count_r"
 }
+
+########################################################################
+# check availability of external utilities:
+
+type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
+  || die 16 "external utilties not found"
 
 ########################################################################
 # parse arguments
@@ -384,10 +397,10 @@ fi
 ########################################################################
 
 workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
-  && cd "$workdir" || exit 16
+  && cd "$workdir" || die 16 "could not create workdir"
 
 exec {table}<> "$workdir/table"  \
-  || die 16 "Could not create table file"
+  || die 16 "could not create table file"
 
 create_table >&$table
 
