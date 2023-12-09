@@ -148,15 +148,22 @@ fi
 # temporary workdir/files:
 
 workdir="$( mktemp -d /tmp/slackup.XXXXXX )" \
-  && cd "$workdir" || exit 1
+  && cd "$workdir" || die 1 "could not create workdir"
 
-exec {install}<>     "$workdir/install.list"         ||  exit 1
-exec {upgrade}<>     "$workdir/upgrade.list"         ||  exit 1
-exec {remove}<>      "$workdir/remove.list"          ||  exit 1
-exec {filter_cli}<>  "$workdir/filter_cli"           ||  exit 1
-exec {fl_install}<>  "$workdir/fl_install.list"      ||  exit 1
-exec {fl_upgrade}<>  "$workdir/fl_upgrade.list"      ||  exit 1
-exec {fl_remove}<>   "$workdir/fl_remove.list"       ||  exit 1
+exec {install}<>     "$workdir/install.list" \
+  ||  die 1 "could not create workfile"
+exec {upgrade}<>     "$workdir/upgrade.list" \
+  ||  die 1 "could not create workfile"
+exec {remove}<>      "$workdir/remove.list" \
+  ||  die 1 "could not create workfile"
+exec {filter_cli}<>  "$workdir/filter_cli" \
+  ||  die 1 "could not create workfile"
+exec {fl_install}<>  "$workdir/fl_install.list" \
+  ||  die 1 "could not create workfile"
+exec {fl_upgrade}<>  "$workdir/fl_upgrade.list" \
+  ||  die 1 "could not create workfile"
+exec {fl_remove}<>   "$workdir/fl_remove.list" \
+  ||  die 1 "could not create workfile"
 
 ########################################################################
 # Generate lists:
