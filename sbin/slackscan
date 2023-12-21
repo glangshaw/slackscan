@@ -251,7 +251,7 @@ function create_table
   local dups fd_available fd_installed
 
   exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  \
-    || diet 16 "could not open 'available' file."
+    || die 16 "could not open 'available' file."
 
   exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  \
     || die 16 "could not open 'installed' file."
