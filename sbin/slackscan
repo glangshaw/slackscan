@@ -156,7 +156,7 @@ function get_pkgdb_dir()
 {
   local dir
 
-  for dir in $ROOT/var/lib/pkgtools/packages $ROOT/var/log/packages ''
+  for dir in "$ROOT/var/lib/pkgtools/packages" "$ROOT/var/log/packages" ''
   do
     [ -d "$dir" ]  &&  break
   done
