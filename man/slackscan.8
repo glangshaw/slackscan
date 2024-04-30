@@ -3,7 +3,7 @@
 slackscan \- Slackware Package Repository difference scanner
 .SH SYNOPSIS
 .B slackscan
-[ \fB-NBFPq\fR ] [ \fB\-p \fIPROFILE\fR ]
+[ \fB-NBFIPq\fR ] [ \fB\-p \fIPROFILE\fR ]
 [ \fB\-i \fIFILENAME\fR ] [ \fB\-u \fIFILENAME\fR ] [ \fB\-r \fIFILENAME\fR ]
 .SH DESCRIPTION
 .B slackscan
@@ -44,6 +44,11 @@ ignore any blacklist file that is part of the configuration profile.
 .TP
 .B \-F
 ignore any filter file that is part of the configuration profile.
+.TP
+.B \-I
+ignore the contents of the package database directory.
+All available packages not blacklisted or filtered will be treated
+as new.
 .TP
 .B \-P
 ignore any protect file that is part of the configuration profile.

@@ -174,6 +174,10 @@ function list_installed()
 {
   local pkgdatadir=$( get_pkgdb_dir )
 
+  if [ "${o_ignore_database:-0}" -eq 1 ]; then
+    return 0
+  fi
+  
   find -H "$pkgdatadir" -type f \
     | reformat_installed \
     | sort -k 1,1
@@ -341,9 +345,9 @@ type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
 
 unset o_install o_remove o_upgrade \
       o_ignore_blacklist o_ignore_filter o_ignore_protect \
-      o_config o_profile o_usage o_skip_verify o_quiet
+      o_ignore_database o_config o_profile o_usage o_skip_verify o_quiet
 
-while getopts ':p:i:u:r:hqBFNP' opt
+while getopts ':p:i:u:r:hqBFINP' opt
 do
   case "$opt" in
     p)  o_profile=$OPTARG       ;;
@@ -354,6 +358,7 @@ do
     u)  o_upgrade=$OPTARG       ;;
     B)  o_ignore_blacklist=1    ;;
     F)  o_ignore_filter=1       ;;
+    I)  o_ignore_database=1     ;;
     P)  o_ignore_protect=1      ;;
     N)  o_skip_verify=1         ;;
     \?) die 16 "Unexpected option: -$OPTARG" ;;
@@ -376,7 +381,7 @@ protect_file="${SLACKSCAN_DIR%/}/${o_profile}/protect"
 if [ "$o_usage" ]; then
   printf '%s\n' \
     'Usage:' \
-    '  slackscan [ -NBFPq ] [ [ -p profile ]' \
+    '  slackscan [ -NBFIPq ] [ [ -p profile ]' \
     '            [-i filename ] [ -u filename ] [ -r filename ] ' \
     '' \
     '  where, ' \
@@ -389,6 +394,8 @@ if [ "$o_usage" ]; then
     "           (INSECURE). " \
     "    -B :   ignore the blacklist file." \
     "    -F :   ignore the filter file." \
+    "    -I :   ignore the package database. " \
+    "           All available packages will be treated as new." \
     "    -P :   ignore the protect file." \
     ''
    exit 0
