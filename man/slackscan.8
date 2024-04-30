@@ -73,6 +73,15 @@ may be set to override the default profile name. A profile name
 specified with the \fB\-p\fR option on the command line will have
 precedence over this environment variable. When unset, the default
 is: '\fIdefault\fR'.
+.TP
+.B ROOT
+specifies an alternative root directory, as used in the pkgtools:
+.BR installpkg (8), 
+.BR upgradepkg (8), 
+.BR removepkg (8).
+.B slackscan
+will apply this prefix when locating the pkgtools package database
+directory that it will use to identify installed packages.
 .SH FILES
 .B slackscan
 is configured through the use of configuration 'profiles'. Each
