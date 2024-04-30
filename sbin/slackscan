@@ -391,12 +391,12 @@ if [ "$o_usage" ]; then
     '    -u :   specifies file to hold list of packages to be upgraded. ' \
     '    -r :   specifies file to hold list of packages to be removed. ' \
     "    -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files. " \
-    "           (INSECURE). " \
-    "    -B :   ignore the blacklist file." \
-    "    -F :   ignore the filter file." \
-    "    -I :   ignore the package database. " \
-    "           All available packages will be treated as new." \
-    "    -P :   ignore the protect file." \
+    '           (INSECURE). ' \
+    '    -B :   ignore the blacklist file.' \
+    '    -F :   ignore the filter file.' \
+    '    -I :   ignore the package database. ' \
+    '           All available packages will be treated as new.' \
+    '    -P :   ignore the protect file.' \
     ''
    exit 0
 fi
