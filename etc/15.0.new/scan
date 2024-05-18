@@ -16,5 +16,5 @@ https://mirrors.slackware.com/slackware/slackware64-15.0/patches/CHECKSUMS.md5
 https://mirrors.slackware.com/slackware/slackware64-15.0/slackware64/CHECKSUMS.md5
 
 # Uncomment to include a local directory of packages as an additional
-# package source::
+# package source:
 # /local/slackware/packages/
