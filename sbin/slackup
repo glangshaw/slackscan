@@ -55,13 +55,6 @@ cleanup()
 }
 
 ########################################################################
-# check availability of external utilities:
-
-if ! type mktemp xargs gpg grep sed >/dev/null ; then
-  die 1 "external dependencies missing."
-fi
-
-########################################################################
 # Parse options:
 
 unset o_usage o_verify_pkg_sig
@@ -122,10 +115,10 @@ show_usage()
     '        -x    execute generated commands instead of writing them to stdout. ' \
     '        -c    add comment lines to output to be more readable.' \
     '        -i    include invocation of post-install scripts. ' \
-    '        -s    include gpg --verify of package files. ' \
+    '        -s    include gpg verify of package files. ' \
     '        -h    show usage text.' \
     '        -E    interpret PATTERN as extended-regex.' \
-    '        -N    do not gpg --verify CHECKSUMS.md5 files.' \
+    '        -N    do not gpg verify CHECKSUMS.md5 files.' \
     '        -I    ignore new packages.' \
     '        -U    ignore updated packages.' \
     '        -R    ignore removed packages.' \
@@ -143,6 +136,31 @@ fi
 if [ ${o_execute:-0} -eq 1 ] && [ ${o_list_only:-0} -eq 1 ]; then
   die 1 "-l and -x are mutually exclusive."
 fi
+
+########################################################################
+# check availability of external utilities:
+
+if ! type mktemp xargs grep sed >/dev/null ; then
+  die 1 "external dependencies missing."
+fi
+
+unset gpg_verify_cmd
+
+for file in gpgv1 gpgv gpgv2 gpg1 gpg gpg2 ""
+do
+  gpg=$(type -p "$file") && break
+done
+
+case "$gpg" in
+  */gpgv* )  gpg_verify_cmd="$gpg --keyring pubring.gpg" ;;
+  */gpg*  )  gpg_verify_cmd="$gpg --verify" ;;
+  *       )  if [ "${o_verify_checksums:-1}" -eq 1 ] \
+                [ "${o_verify_pkg_sig:-0}" -eq 1 ] ; then
+                die 16 "Could not find gpg command"
+             fi
+             ;;
+esac
+unset gpg file
 
 ########################################################################
 # temporary workdir/files:
@@ -242,8 +260,8 @@ gen_up()
         ;;
     esac
     if [ ${o_verify_pkg_sig:-0} -eq 1 ]; then
-      printf 'gpg --verify \\\n  %s \\\n  %s \\\n&&  ' \
-        "$pkgfile.asc" "$pkgfile"
+      printf '%s \\\n  %s \\\n  %s \\\n&&  ' \
+        "$gpg_verify_cmd" "$pkgfile.asc" "$pkgfile"
     fi
     printf 'upgradepkg %s %s' "$pkg_opt" "$pkgfile"
     if [ ${o_post_install:-0} -eq 1 ]; then

@@ -86,8 +86,8 @@ function fetch_md5()
   if curl --retry 3 -s -f -o /dev/fd/$fd_checksums "$1" ; then
     if [ ${o_skip_verify:-0} -ne 1 ]; then
       curl --retry 3 -s -f -o /dev/fd/$fd_sig "$1.asc" \
-        && gpg --verify /dev/fd/$fd_sig /dev/fd/$fd_checksums >/dev/null 2>&1 \
-        || { die 8 "gpg --verify failed on $1" ; }
+        && $gpg_verify_cmd /dev/fd/$fd_sig /dev/fd/$fd_checksums >/dev/null 2>&1 \
+        || { die 8 "gpg verification failed on $1" ; }
     fi
   else
     die 16 "Aborted - could not fetch $1"
@@ -335,12 +335,6 @@ function print_stats()
 }
 
 ########################################################################
-# check availability of external utilities:
-
-type mktemp find grep sed cut sort join uniq curl gpg >/dev/null \
-  || die 16 "external utilties not found"
-
-########################################################################
 # parse arguments
 
 unset o_install o_remove o_upgrade \
@@ -390,7 +384,7 @@ if [ "$o_usage" ]; then
     '    -i :   specifies file to hold list of packages to be installed. ' \
     '    -u :   specifies file to hold list of packages to be upgraded. ' \
     '    -r :   specifies file to hold list of packages to be removed. ' \
-    "    -N :   skip 'gpg --verify' of downloaded CHECKSUMS.md5 files. " \
+    "    -N :   skip gpg verify of downloaded CHECKSUMS.md5 files. " \
     '           (INSECURE). ' \
     '    -B :   ignore the blacklist file.' \
     '    -F :   ignore the filter file.' \
@@ -399,6 +393,28 @@ if [ "$o_usage" ]; then
     '    -P :   ignore the protect file.' \
     ''
    exit 0
+fi
+
+########################################################################
+# check availability of external utilities:
+
+type mktemp find grep sed cut sort join uniq curl >/dev/null \
+  || die 16 "external utilties not found"
+
+unset gpg_verify_cmd
+
+if [ "${o_skip_verify:-0}" -eq 0 ]; then
+  for file in gpgv1 gpgv gpgv2 gpg1 gpg gpg2 ""
+  do
+    gpg=$(type -p "$file") && break
+  done
+
+  case "$gpg" in
+    */gpgv* )  gpg_verify_cmd="$gpg --keyring pubring.gpg" ;;
+    */gpg*  )  gpg_verify_cmd="$gpg --verify" ;;
+    *       )  die 16 "Could not find gpg command" ;;
+  esac
+  unset gpg file
 fi
 
 ########################################################################

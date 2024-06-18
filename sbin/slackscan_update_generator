@@ -29,7 +29,7 @@ BEGIN {
     else
         f = $0
 
-    print "gpg --verify \\"
+    print "gpgv --keyring pubring.gpg \\"
     print "  '"f".asc' \\"
     print "  '"f"' \\"
     print "&& upgradepkg --install-new '"f"' "
