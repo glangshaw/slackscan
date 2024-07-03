@@ -1,9 +1,9 @@
-.TH SLACKSCAN 8 2024-05-18
+.TH SLACKSCAN 8 2024-07-03 "slackscan 3.7"
 .SH NAME
 slackscan \- Slackware Package Repository difference scanner
 .SH SYNOPSIS
 .B slackscan
-[ \fB-NBFIPq\fR ] [ \fB\-p \fIPROFILE\fR ]
+[ \fB-NBFIRPq\fR ] [ \fB\-p \fIPROFILE\fR ]
 [ \fB\-i \fIFILENAME\fR ] [ \fB\-u \fIFILENAME\fR ] [ \fB\-r \fIFILENAME\fR ]
 .SH DESCRIPTION
 .B slackscan
@@ -49,6 +49,11 @@ ignore any filter file that is part of the configuration profile.
 ignore the contents of the package database directory.
 All available packages not blacklisted or filtered will be treated
 as new.
+.TP
+.B \-R
+ignore the version of installed packages.
+All available packages not blacklisted or filtered will be treated
+as outdated.
 .TP
 .B \-P
 ignore any protect file that is part of the configuration profile.

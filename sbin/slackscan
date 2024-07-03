@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='3.6'
+   version='3.7'
 
 #  Copyright (c) 2013-2023, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -303,7 +303,7 @@ function report()
   do
     if [ "$installed" != 'not-installed' ] && \
        [ "$available" != 'not-available' ] && \
-       [ "$available" != "$installed" ]
+       [ "$available" != "$installed" -o "${o_reinstall:-0}" -eq 1 ]
     then
       (( count_u++ ))
       [ "$o_upgrade" ] && echo "$pkgpath" >&$fd_rep_u
@@ -339,9 +339,10 @@ function print_stats()
 
 unset o_install o_remove o_upgrade \
       o_ignore_blacklist o_ignore_filter o_ignore_protect \
-      o_ignore_database o_config o_profile o_usage o_skip_verify o_quiet
+      o_ignore_database o_reinstall \
+      o_config o_profile o_usage o_skip_verify o_quiet
 
-while getopts ':p:i:u:r:hqBFINP' opt
+while getopts ':p:i:u:r:hqBFINPR' opt
 do
   case "$opt" in
     p)  o_profile=$OPTARG       ;;
@@ -353,8 +354,9 @@ do
     B)  o_ignore_blacklist=1    ;;
     F)  o_ignore_filter=1       ;;
     I)  o_ignore_database=1     ;;
-    P)  o_ignore_protect=1      ;;
     N)  o_skip_verify=1         ;;
+    P)  o_ignore_protect=1      ;;
+    R)  o_reinstall=1           ;;
     \?) die 16 "Unexpected option: -$OPTARG" ;;
     :)  die 16 "Missing operand for option -$OPTARG" ;;
   esac
@@ -390,6 +392,8 @@ if [ "$o_usage" ]; then
     '    -F :   ignore the filter file.' \
     '    -I :   ignore the package database. ' \
     '           All available packages will be treated as new.' \
+    '    -R :   ignore package versions. ' \
+    '           All installed packages will be treated as outdated.' \
     '    -P :   ignore the protect file.' \
     ''
    exit 0
