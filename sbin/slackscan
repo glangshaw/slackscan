@@ -1,7 +1,7 @@
 #!/bin/bash -p
 #
 #  slackscan
-   version='3.8'
+   version='3.8.1'
 
 #  Copyright (c) 2013-2023, Gary Langshaw. <gary.langshaw@gmail.com>
 #  Permission to use, copy, modify, and/or distribute this software for any
@@ -368,7 +368,7 @@ function populate_protect()
 
   list_installed \
     | sort -Vr -k 2,2 | sort -u -k 1,1 \
-    | sed 's/\([^ ]\+\)\(.*\)/^\1$/' >> "${protect_file}"
+    | sed 's/\([^ ]\+\)\(.*\)/^\1-/' >> "${protect_file}"
 }
 
 ########################################################################
