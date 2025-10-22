@@ -1,4 +1,4 @@
-# /etc/slackup/current/filter
+# /etc/slackscan/current/filter
 # Format: basic-regex
 #
 #  This file is the 'filter' file for the 'slackscan' utility.

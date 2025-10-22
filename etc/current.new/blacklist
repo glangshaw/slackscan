@@ -1,4 +1,4 @@
-# /etc/slackup/current/blacklist
+# /etc/slackscan/current/blacklist
 # Format: basic-regex
 #
 #  This file is the 'blacklist' file for the 'slackscan' utility.
