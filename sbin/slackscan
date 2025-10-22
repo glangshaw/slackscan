@@ -50,8 +50,10 @@ remove_comments()
 
 file_regex_type()
 {
-  grep -q '^[[:space:]]*# Format: extended-regex' ${1:--} \
-    &&  printf '-E'
+  if [ -e "$1" ]; then
+    grep -q '^[[:space:]]*# Format: extended-regex' ${1:--} \
+      &&  printf '-E'
+  fi
 }
 
 function reformat_available()
@@ -241,15 +243,6 @@ function list_available_filtered()
   fi
 }
 
-function apply_protect()
-{
-  if [ ${o_ignore_protect:-0} -eq 1 ]; then
-    cat
-  else
-    run_file_filter "$protect_file" -v
-  fi
-}
-
 function create_table
 {
   local dups fd_available fd_installed
@@ -316,8 +309,12 @@ function report()
     if [ "$installed" != 'not-installed' ] && \
        [ "$available" == 'not-available' ]
     then
-      (( count_r++ ))
-      [ "$o_remove" ] && echo "$installed" | apply_protect >&$fd_rep_r
+      if [ ${o_ignore_protect:-0} -eq 1 ] \
+         || ! grep -q ${regex_type_protect} -f /dev/fd/$protect <<< "$installed"
+      then
+          [ "$o_remove" ] && echo "$installed" >&$fd_rep_r
+          (( count_r++ ))
+      fi
     fi
   done
 
@@ -475,6 +472,12 @@ workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
 
 exec {table}<> "$workdir/table"  \
   || die 16 "could not create table file"
+
+exec {protect}<> "$workdir/protect"  \
+  || die 16 "could not create protect file"
+
+regex_type_protect=$(file_regex_type "$protect_file")
+remove_comments < "$protect_file"  >&$protect
 
 create_table >&$table
 
