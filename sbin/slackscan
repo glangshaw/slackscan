@@ -70,6 +70,8 @@ function find_in_dir()
 
   find -L "$1" -type f -name "*.t?z" \
     | reformat_available \
+    | apply_filter \
+    | apply_blacklist \
     | sort -Vr -k 2,2 \
     | sort -u -k 1,1
 
@@ -128,6 +130,8 @@ function find_in_md5()
 
   reformat_md5 "$prefix" < "$filename" \
     | reformat_available \
+    | apply_filter \
+    | apply_blacklist \
     | sort -Vr -k 2,2 \
     | sort -u -k 1,1
 
@@ -189,57 +193,34 @@ function list_installed()
   fi
 }
 
-function run_file_filter()
-{
-  local infile=$1 grep_opt=$2
-  local fd_temp1 filter_cmd
-  local count regex_type
-
-  if [ -e "$infile" ]; then
-    regex_type=$( file_regex_type "$infile")
-    exec {fd_temp1}<> "$( mktemp -p "$workdir" temp1.XXXXXX )"
-    remove_comments "$infile" >&$fd_temp1
-    count=$( wc -l </dev/fd/$fd_temp1 )
-  fi
-
-  if [ ${count:-0} -gt 0 ]; then
-    filter_cmd="grep $grep_opt $regex_type -f /dev/fd/$fd_temp1"
-  else
-    filter_cmd='cat'
-  fi
-
-  $filter_cmd
-
-  [ -n "$fd_temp1" ] && exec {fd_temp1}>&-
-}
-
 function apply_filter()
 {
-  if [ ${o_ignore_filter:-0} -eq 1 ]; then
+  if [ ${o_ignore_filter:-0} -eq 1 ] || [ ${regex_count_filter:-0} -eq 0 ]; then
     cat
   else
-    run_file_filter "$filter_file"
+    grep $regex_type_filter -f /dev/fd/$filter
   fi
+
+  return 0
 }
 
 function apply_blacklist()
 {
-  if [ ${o_ignore_blacklist:-0} -eq 1 ]; then
+  if [ ${o_ignore_blacklist:-0} -eq 1 ] || [ ${regex_count_blacklist:-0} -eq 0 ]; then
     cat
   else
-    run_file_filter "$blacklist_file" -v
+    grep -v $regex_type_blacklist -f /dev/fd/$blacklist
   fi
+  return 0
 }
 
-function list_available_filtered()
+function list_available_sorted()
 {
   find_available \
-    | apply_filter \
-    | apply_blacklist \
     | sort -u -k 1,1
 
   if [ $? -ne 0 ]; then
-    die 16 "error in list_available_filtered()"
+    die 16 "error in list_available_sorted()"
   fi
 }
 
@@ -253,7 +234,7 @@ function create_table
   exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  \
     || die 16 "could not open 'installed' file."
 
-  list_available_filtered >&$fd_available
+  list_available_sorted >&$fd_available
 
   list_installed | sort -Vr -k 2,2 | sort -u -k 1,1 >&$fd_installed
 
@@ -473,14 +454,34 @@ workdir="$( mktemp -d /tmp/slackscan.XXXXXX )" \
 exec {table}<> "$workdir/table"  \
   || die 16 "could not create table file"
 
+exec {filter}<> "$workdir/filter"  \
+  || die 16 "could not create filter file"
+
+exec {blacklist}<> "$workdir/blacklist"  \
+  || die 16 "could not create blacklist file"
+
 exec {protect}<> "$workdir/protect"  \
   || die 16 "could not create protect file"
 
-regex_type_protect=$(file_regex_type "$protect_file")
-remove_comments < "$protect_file"  >&$protect
+if [ -e "$filter_file" ]; then
+   regex_type_filter=$(file_regex_type "$filter_file" )
+   remove_comments "$filter_file"  >&$filter
+   regex_count_filter=$( wc -l < /dev/fd/$filter )
+fi
+
+if [ -e "$blacklist_file" ]; then
+   regex_type_blacklist=$( file_regex_type "$blacklist_file" )
+   remove_comments "$blacklist_file"  >&$blacklist
+   regex_count_blacklist=$( wc -l < /dev/fd/$blacklist )
+fi
+
+if [ -e "$protect_file" ]; then
+   regex_type_protect=$( file_regex_type "$protect_file" )
+   remove_comments "$protect_file"  >&$protect
+   regex_count_protect=$( wc -l < /dev/fd/$protect )
+fi
 
 create_table >&$table
-
 report < /dev/fd/$table
 
 if [ ${o_quiet:-0} -eq 0 ]; then
@@ -494,6 +495,9 @@ else
 fi
 
 exec {table}>&-
+exec {filter}>&-
+exec {blacklist}>&-
+exec {protect}>&-
 
 ########################################################################
 # clean-up
