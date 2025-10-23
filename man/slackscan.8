@@ -155,11 +155,12 @@ handled in one of two ways, depending on whether the duplicate is found
 within the same package location, or across separate package locations.
 .PP
 When a duplicated package name is encountered across two separate package
-source locations then the first to be encountered will be used for any
-comparisions.
+source locations then the one in the first package source location to be
+encountered will be selected.
 .PP
-Within a single package source location the file with the highest version
-number will be compared.
+When a duplicate package name is encountered within a single package source
+location then the file with the highest version number will be selected.
+This duplicate-resolution occurs after any filter or blacklist have been applied. 
 .PP
 When two versions of the same package are already installed, slackscan
 will compare available packages to the highest version installed, ignoring
