@@ -3,7 +3,7 @@
 #
 #  This file is the 'blacklist' file for the 'slackscan' utility.
 #  Package files matching one of the following patterns will
-#  be excluded from install and upgrade actions.
+#  be excluded from the results of the scan for available packages.
 #
 #  Caution!
 #    Remember these are regexes. Watch out for partial matches

@@ -3,16 +3,13 @@
 #
 #  This file is the 'filter' file for the 'slackscan' utility.
 #  Package files not matching one of the following patterns will
-#  be excluded from install and upgrade actions.
-#
-#  Patterns passed on the command line will be appended to those
-#  in this file when processing the filters at run-time.
+#  be excluded from the results of the scan for available packages.
 #
 #  Patterns in the blacklist file are processed after these
 #  filters are applied.
 #
 
 ## The following example when uncommented would limit matches to
-## packages found in slackware64-current and 'xv' from extra/
+## packages found in slackware64/ plus 'xv' from extra/
 #/slackware64-current/slackware64/
 #/slackware64-current/extra/xv
