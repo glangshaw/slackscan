@@ -228,7 +228,7 @@ function create_table
 {
   local dups fd_available fd_installed
 
-  exec {fd_available}<> "${workdir:-${TNPDIR:-/tmp}}/available"  \
+  exec {fd_available}<> "${workdir:-${TMPDIR:-/tmp}}/available"  \
     || die 16 "could not open 'available' file."
 
   exec {fd_installed}<> "${workdir:-${TMPDIR:-/tmp}}/installed"  \
